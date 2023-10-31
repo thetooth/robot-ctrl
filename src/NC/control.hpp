@@ -39,11 +39,19 @@ namespace NC
         for (;;)
         {
             assert(fsm != NULL);
+
+            auto alarm = false;
+            if (fsm->A1GapAlarm || fsm->A2GapAlarm)
+            {
+                alarm = true;
+            }
+
             auto [ax, ay] = IKScara::forwardKinematics(fsm->A1InPDO->actual_position / GEAR, fsm->A2InPDO->actual_position / GEAR);
+
             // Status
             json stats = {
                 {"run", fsm->run},
-                {"alarm", false},
+                {"alarm", alarm},
                 {"dx", ax},
                 {"dy", ay},
                 {"dAlpha", fsm->A1InPDO->actual_position / GEAR},

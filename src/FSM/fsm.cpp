@@ -8,8 +8,8 @@ void FSM::update()
     case Idle:
         if (estop && run)
         {
-            Common::wkc += Common::Write8(4, 0x6060, 0, 0x8);
-            Common::wkc += Common::Write8(5, 0x6060, 0, 0x8);
+            Common::wkc += Common::Write8(A1ID, 0x6060, 0, 0x8);
+            Common::wkc += Common::Write8(A2ID, 0x6060, 0, 0x8);
             A1.setCommand(CANOpenCommand::ENABLE);
             A2.setCommand(CANOpenCommand::ENABLE);
             next = Startup;
@@ -24,8 +24,8 @@ void FSM::update()
         A2.setCommand(CANOpenCommand::DISABLE);
         if (A1.compareState(CANOpenState::OFF) && A2.compareState(CANOpenState::OFF))
         {
-            Common::wkc += Common::Write8(4, 0x6060, 0, 0x0);
-            Common::wkc += Common::Write8(5, 0x6060, 0, 0x0);
+            Common::wkc += Common::Write8(A1ID, 0x6060, 0, 0x0);
+            Common::wkc += Common::Write8(A2ID, 0x6060, 0, 0x0);
             next = Idle;
         }
         break;

@@ -34,14 +34,15 @@ public:
     // PDO memory
     in_deltab3_t *A1InPDO, *A2InPDO;
     out_deltab3_t *A1OutPDO, *A2OutPDO;
+    int A1ID, A2ID = 0;
+    bool A1GapAlarm, A2GapAlarm = false;
 
-    void assignDrives(int a1, int a2)
+    void assignDrives()
     {
-        assert(a1 != 0 && a2 != 0);
-        A1OutPDO = (out_deltab3_t *)ec_slave[a1].outputs;
-        A1InPDO = (in_deltab3_t *)ec_slave[a1].inputs;
-        A2OutPDO = (out_deltab3_t *)ec_slave[a2].outputs;
-        A2InPDO = (in_deltab3_t *)ec_slave[a2].inputs;
+        A1OutPDO = (out_deltab3_t *)ec_slave[A1ID].outputs;
+        A1InPDO = (in_deltab3_t *)ec_slave[A1ID].inputs;
+        A2OutPDO = (out_deltab3_t *)ec_slave[A2ID].outputs;
+        A2InPDO = (in_deltab3_t *)ec_slave[A2ID].inputs;
 
         A1.setCommand(CANOpenCommand::DISABLE);
         A2.setCommand(CANOpenCommand::DISABLE);

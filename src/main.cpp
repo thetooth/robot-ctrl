@@ -1,6 +1,3 @@
-#include "ethercat.h"
-#include "osal.h"
-#include "oshw.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +9,9 @@
 #include <chrono>
 #include <thread>
 
+#include "ethercat.h"
+#include "osal.h"
+#include "oshw.h"
 #include "ruckig/ruckig.hpp"
 
 #include "common.hpp"
@@ -19,18 +19,11 @@
 #include "FSM/fsm.hpp"
 #include "NC/control.hpp"
 
-using namespace std::literals::chrono_literals;
-using namespace std::chrono;
 using namespace ruckig;
-using json = nlohmann::json;
 
 // EtherCAT variables:
 char IOmap[4096];
 unsigned int usedmem;
-
-int A1ID = 0;
-int A2ID = 0;
-bool A1GapAlarm, A2GapAlarm = false;
 
 // FSM
 auto fsm = FSM();
@@ -57,25 +50,25 @@ int nic_setup(char *ifname)
         auto &&slave = ec_slave[cnt];
         if (std::strcmp(slave.name, "ASDA-B3-E CoE Drive") == 0)
         {
-            if (A1ID == 0)
+            if (fsm.A1ID == 0)
             {
                 printf("Assign %s %d as A1\n", slave.name, cnt);
-                A1ID = cnt;
+                fsm.A1ID = cnt;
             }
-            else if (A2ID == 0)
+            else if (fsm.A2ID == 0)
             {
                 printf("Assign %s %d as A2\n", slave.name, cnt);
-                A2ID = cnt;
+                fsm.A2ID = cnt;
             }
         }
     }
 
-    assert(A1ID != 0);
-    assert(A2ID != 0);
+    assert(fsm.A1ID != 0);
+    assert(fsm.A2ID != 0);
 
     // Drive startup params
-    ec_slave[A1ID].PO2SOconfig = Delta::PO2SOconfig;
-    ec_slave[A2ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[fsm.A1ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[fsm.A2ID].PO2SOconfig = Delta::PO2SOconfig;
 
     ec_statecheck(0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE * 4);
 
@@ -83,8 +76,8 @@ int nic_setup(char *ifname)
     ec_readstate();
 
     // DC Setup
-    ec_dcsync0(A1ID, true, SYNC0, 3000);
-    ec_dcsync0(A2ID, true, SYNC0, 3000);
+    ec_dcsync0(fsm.A1ID, true, SYNC0, 0);
+    ec_dcsync0(fsm.A2ID, true, SYNC0, 0);
 
     usedmem = ec_config_map(&IOmap);
     if (!(usedmem <= sizeof(IOmap)))
@@ -131,7 +124,7 @@ int main()
     }
 
     // Assign slave ids and setup PDO table
-    fsm.assignDrives(A1ID, A2ID);
+    fsm.assignDrives();
 
     // Setup message bus
     auto monitor = std::thread(NC::monitor, &fsm);
@@ -150,13 +143,14 @@ int main()
         InputParameter<2> input;
         OutputParameter<2> output;
 
+        // Set input parameters
         input.max_velocity = {1000.0, 1000.0};
         input.max_acceleration = {1000.0, 1000.0};
         input.max_jerk = {1000.0, 1000.0};
-        // Set input parameters
-        input.current_position = {0.0};
-        input.current_velocity = {0.0};
-        input.current_acceleration = {0.0};
+
+        input.current_position = {0.0, 0.0};
+        input.current_velocity = {0.0, 0.0};
+        input.current_acceleration = {0.0, 0.0};
 
         input.target_position = {0.0, 0.0};
         input.target_velocity = {0.0, 0.0};
@@ -174,10 +168,6 @@ int main()
             ec_send_processdata();
             Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
-            // printf("status: 0x%x 0x%x\n",
-            //        A1InPDO->status_word,
-            //        A2InPDO->status_word);
-
             fsm.update();
             if (fsm.next == Tracking)
             {
@@ -191,9 +181,6 @@ int main()
                     input.current_velocity = {0.0, 0.0};
                     input.current_acceleration = {0.0, 0.0};
                     otg.reset();
-                    // otg.update(input, output);
-                    // fsm.A1OutPDO->target_position = fsm.A1InPDO->actual_position;
-                    // fsm.A2OutPDO->target_position = fsm.A2InPDO->actual_position;
 
                     printf("Resync\n");
                     inSync = TRUE;
@@ -227,12 +214,11 @@ int main()
                 }
                 auto &p = output.new_position;
 
-                fsm.A1OutPDO->target_position = IKScara::gap(p[0], fsm.A1InPDO->actual_position / GEAR, &A1GapAlarm) * GEAR;
-                fsm.A2OutPDO->target_position = IKScara::gap(p[1], fsm.A2InPDO->actual_position / GEAR, &A2GapAlarm) * GEAR;
+                fsm.A1OutPDO->target_position = IKScara::gap(p[0], fsm.A1InPDO->actual_position / GEAR, &fsm.A1GapAlarm) * GEAR;
+                fsm.A2OutPDO->target_position = IKScara::gap(p[1], fsm.A2InPDO->actual_position / GEAR, &fsm.A2GapAlarm) * GEAR;
 
                 // Set input parameters
                 output.pass_to_input(input);
-
                 // printf("positon: %f %f %f %f\n", theta1, theta2, p[0], p[1]);
             }
             else
@@ -240,7 +226,7 @@ int main()
                 inSync = false;
             }
 
-            // std::cout << "Offset: " << toff << std::endl;
+            // printf("Offset: %ld nS\n", toff);
 
             // calulate toff to get linux time and DC synced
             TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
