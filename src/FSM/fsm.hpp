@@ -1,8 +1,13 @@
 #ifndef FSM_HPP
 #define FSM_HPP
 
+#include "ethercat.h"
 #include "nats.h"
 #include "nlohmann/json.hpp"
+
+#include "../common.hpp"
+#include "../delta.hpp"
+#include "../CAN/CoEFSM.h"
 
 using json = nlohmann::json;
 
@@ -23,14 +28,14 @@ public:
 
     State next = Idle;
 
-    CANOpenStateMachine A1;
-    CANOpenStateMachine A2;
+    CoEFSM A1;
+    CoEFSM A2;
 
     // PDO memory
     in_deltab3_t *A1InPDO, *A2InPDO;
     out_deltab3_t *A1OutPDO, *A2OutPDO;
 
-    void init(int a1, int a2)
+    void assignDrives(int a1, int a2)
     {
         assert(a1 != 0 && a2 != 0);
         A1OutPDO = (out_deltab3_t *)ec_slave[a1].outputs;
@@ -44,9 +49,10 @@ public:
 
     void update();
 
-    void commandCb(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
+    void commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg, [[maybe_unused]] void *closur)
     {
         auto payload = json::parse(natsMsg_GetData(msg));
+        // printf("%s\n", payload.dump().c_str());
         if (!payload["command"].is_string())
         {
             return;
@@ -57,17 +63,11 @@ public:
         {
             run = true;
             estop = true;
-            wkc += moog_write8(4, 0x6060, 0, 0x8);
-            wkc += moog_write8(5, 0x6060, 0, 0x8);
-            A1.setCommand(CANOpenCommand::ENABLE);
-            A2.setCommand(CANOpenCommand::ENABLE);
         }
         if (command.compare("stop") == 0)
         {
             run = false;
             estop = false;
-            A1.setCommand(CANOpenCommand::DISABLE);
-            A2.setCommand(CANOpenCommand::DISABLE);
         }
         natsMsg_Destroy(msg);
     }

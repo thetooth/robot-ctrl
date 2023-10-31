@@ -14,14 +14,10 @@
 
 #include "ruckig/ruckig.hpp"
 
-#include "nats.h"
-#include "nlohmann/json.hpp"
-
 #include "common.hpp"
-#include "delta.hpp"
-#include "CAN/CanOpenStateMachine.h"
 #include "IK/scara.hpp"
 #include "FSM/fsm.hpp"
+#include "NC/control.hpp"
 
 using namespace std::literals::chrono_literals;
 using namespace std::chrono;
@@ -38,15 +34,6 @@ bool A1GapAlarm, A2GapAlarm = false;
 
 // FSM
 auto fsm = FSM();
-void commandCb(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
-{
-    fsm.commandCb(nc, sub, msg, closur);
-}
-
-// Communications
-natsConnection *nc = NULL;
-natsSubscription *ctrlSub = NULL;
-natsMsg *msg = NULL;
 
 int nic_setup(char *ifname)
 {
@@ -87,8 +74,8 @@ int nic_setup(char *ifname)
     assert(A2ID != 0);
 
     // Drive startup params
-    ec_slave[A1ID].PO2SOconfig = Map_PDO_CMMT;
-    ec_slave[A2ID].PO2SOconfig = Map_PDO_CMMT;
+    ec_slave[A1ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[A2ID].PO2SOconfig = Delta::PO2SOconfig;
 
     ec_statecheck(0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE * 4);
 
@@ -109,17 +96,12 @@ int nic_setup(char *ifname)
 
     ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
 
-    printf("DC capable : %d\n", ec_configdc());
-
-    // A1OutPDO = (out_deltab3_t *)ec_slave[A1ID].outputs;
-    // A1InPDO = (in_deltab3_t *)ec_slave[A1ID].inputs;
-    // A2OutPDO = (out_deltab3_t *)ec_slave[A2ID].outputs;
-    // A2InPDO = (in_deltab3_t *)ec_slave[A2ID].inputs;
+    printf("DC capable : %s\n", (ec_configdc() ? "yes" : "no :("));
 
     ec_slave[0].state = EC_STATE_OPERATIONAL;
     // send one valid process data to make outputs in slaves happy
     ec_send_processdata();
-    wkc = ec_receive_processdata(EC_TIMEOUTRET);
+    Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
     ec_writestate(0);
     do
@@ -148,27 +130,17 @@ int main()
         return 1;
     }
 
-    fsm.init(A1ID, A2ID);
+    // Assign slave ids and setup PDO table
+    fsm.assignDrives(A1ID, A2ID);
 
     // Setup message bus
-    auto ncStatus = natsConnection_ConnectTo(&nc, NATS_DEFAULT_URL);
-    assert(ncStatus == NATS_OK);
-    ncStatus = natsConnection_Subscribe(&ctrlSub, nc, "motion.command", commandCb, NULL);
-    assert(ncStatus == NATS_OK);
+    auto monitor = std::thread(NC::monitor, &fsm);
 
-    // Set operational mode
-    wkc += moog_write8(A1ID, 0x6060, 0, 0x0);
-    wkc += moog_write8(A2ID, 0x6060, 0, 0x0);
-
-    bool inOP = FALSE;
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
         printf("Operational state reached for all slaves.\n");
-        inOP = TRUE;
         auto inSync = FALSE;
-        // auto duration = duration_cast<nanoseconds>(0ms);
 
-        auto GEAR = 46603.0 * 10.0 * 2.78; // Units per degree * gearbox * pulley
         auto dx = 110.0;
         auto dy = 170.0;
         auto pathPos = 0;
@@ -191,14 +163,16 @@ int main()
 
         // Timing
         struct timespec tick;
+        int64_t toff = 0;
+        int64_t integral = 0;
         clock_gettime(CLOCK_MONOTONIC, &tick);
-        ts_Increment(tick, CYCLETIME);
+        TS::Increment(tick, CYCLETIME);
 
         /* cyclic loop */
         while (true)
         {
             ec_send_processdata();
-            wkc = ec_receive_processdata(EC_TIMEOUTRET);
+            Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
             // printf("status: 0x%x 0x%x\n",
             //        A1InPDO->status_word,
@@ -218,8 +192,8 @@ int main()
                     input.current_acceleration = {0.0, 0.0};
                     otg.reset();
                     // otg.update(input, output);
-                    fsm.A1OutPDO->target_position = fsm.A1InPDO->actual_position;
-                    fsm.A2OutPDO->target_position = fsm.A2InPDO->actual_position;
+                    // fsm.A1OutPDO->target_position = fsm.A1InPDO->actual_position;
+                    // fsm.A2OutPDO->target_position = fsm.A2InPDO->actual_position;
 
                     printf("Resync\n");
                     inSync = TRUE;
@@ -258,9 +232,6 @@ int main()
 
                 // Set input parameters
                 output.pass_to_input(input);
-                // input.current_velocity = output.new_velocity;
-                // input.current_position[0] = fsm.A1InPDO->actual_position / GEAR;
-                // input.current_position[1] = fsm.A2InPDO->actual_position / GEAR;
 
                 // printf("positon: %f %f %f %f\n", theta1, theta2, p[0], p[1]);
             }
@@ -268,29 +239,17 @@ int main()
             {
                 inSync = false;
             }
-            auto [ax, ay] = IKScara::forwardKinematics(fsm.A1InPDO->actual_position / GEAR, fsm.A2InPDO->actual_position / GEAR);
-            // Status
-            json stats = {
-                {"run", fsm.run},
-                {"alarm", A1GapAlarm || A2GapAlarm},
-                {"dx", ax},
-                {"dy", ay},
-                {"dAlpha", fsm.A1InPDO->actual_position / GEAR},
-                {"dBeta", fsm.A2InPDO->actual_position / GEAR},
-            };
-            auto payload = stats.dump();
-            natsConnection_Publish(nc, "motion.status", payload.c_str(), payload.length());
 
             // std::cout << "Offset: " << toff << std::endl;
 
             // calulate toff to get linux time and DC synced
-            ts_DCSync(ec_DCtime, CYCLETIME, &toff);
+            TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
             // Apply offset to timespec
-            ts_AppyOffset(&tick, toff);
+            TS::AppyOffset(&tick, toff);
             // Monotonic sleep
             clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tick, NULL);
             // Increment timespec by cycletime
-            ts_Increment(tick, CYCLETIME);
+            TS::Increment(tick, CYCLETIME);
         }
     }
 
