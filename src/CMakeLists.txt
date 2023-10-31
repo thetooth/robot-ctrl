@@ -14,32 +14,20 @@ foreach(dir ${directories})
     endif()
 endforeach()
 
-add_library(${PROJECT_NAME}_LIB ${sources_list})
-
-target_include_directories(
-    ${PROJECT_NAME}_LIB
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src
-)
-
-target_compile_definitions(
-    ${PROJECT_NAME}_LIB
-    PUBLIC
-        # Add compile definitions here
-)
+add_executable(${PROJECT_NAME} ${sources_list})
 
 target_compile_features(
-    ${PROJECT_NAME}_LIB
+    ${PROJECT_NAME}
     PUBLIC
         c_std_11
-        cxx_std_17
+        cxx_std_20
 )
 
 set_target_properties(
-    ${PROJECT_NAME}_LIB
+    ${PROJECT_NAME}
         PROPERTIES
             CXX_STANDARD_REQUIRED ON
-            CXX_EXTENSIONS OFF
+            CXX_EXTENSIONS ON
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -50,11 +38,14 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND CUSTOM_COMPILE_OPTIONS
             -Werror
             -Wpedantic 
-            -Wextra 
+            -Wextra
+            -Wno-gnu-anonymous-struct
+            -Wno-gnu-zero-variadic-macro-arguments
+            -Wno-nested-anon-types
         )
     endif()
     target_compile_options(
-        ${PROJECT_NAME}_LIB
+        ${PROJECT_NAME}
         PUBLIC
             ${CUSTOM_COMPILE_OPTIONS}
     )
@@ -63,14 +54,3 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CAN)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/FSM)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/IK)
-# target_link_options(
-#     ${PROJECT_NAME}_LIB
-#     PUBLIC
-#         ${DEFAULT_LINKER_OPTIONS}
-# )
-
-# target_link_libraries(
-#     ${PROJECT_NAME}_LIB
-#     PUBLIC
-#         # Add libraries to link to the binary here
-# )
