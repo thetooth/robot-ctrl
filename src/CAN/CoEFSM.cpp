@@ -1,6 +1,6 @@
-#include "CanOpenStateMachine.h"
+#include "CoEFSM.h"
 
-void CANOpenStateMachine::update(uint16_t status_word)
+void CoEFSM::update(uint16_t status_word)
 {
     status_word_ = status_word;
 
@@ -51,7 +51,7 @@ void CANOpenStateMachine::update(uint16_t status_word)
         }
         default:
         case CANOpenState::ON:
-            DEBUG_PRINT("ON status achieved\n");
+            // DEBUG_PRINT("ON status achieved\n");
             // Reset command now that the desired state has been reached.
             command_ = CANOpenCommand::NONE;
             break;

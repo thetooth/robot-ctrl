@@ -120,13 +120,13 @@ namespace control
 constexpr std::chrono::nanoseconds MOTOR_RESET_DELAY = 10ms;
 constexpr std::chrono::nanoseconds MOTOR_INIT_TIMEOUT = 1s;
 
-class CANOpenStateMachine
+class CoEFSM
 {
 public:
     void update(uint16_t status_word);
     void setCommand(CANOpenCommand command) { command_ = command; };
     uint16_t getControlWord() { return control_word_; }
-    CANOpenState getState() { return motor_state_; }
+    bool compareState(CANOpenState desired) { return motor_state_ == desired; }
 
 private:
     CANOpenCommand command_ = CANOpenCommand::NONE;
