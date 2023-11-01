@@ -10,3 +10,6 @@
 [submodule "ruckig"]
 	path = ruckig
 	url = https://github.com/pantor/ruckig.git
+[submodule "spdlog"]
+	path = spdlog
+	url = https://github.com/gabime/spdlog.git
