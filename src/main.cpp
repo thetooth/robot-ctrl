@@ -2,22 +2,23 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/time.h>
 
-#include <math.h>
 #include <chrono>
+#include <math.h>
 #include <thread>
 
 #include "ethercat.h"
 #include "osal.h"
 #include "oshw.h"
 #include "ruckig/ruckig.hpp"
+#include "spdlog/spdlog.h"
 
-#include "common.hpp"
-#include "IK/scara.hpp"
 #include "FSM/fsm.hpp"
+#include "IK/scara.hpp"
 #include "NC/control.hpp"
+#include "common.hpp"
 
 using namespace ruckig;
 
@@ -26,23 +27,25 @@ char IOmap[4096];
 unsigned int usedmem;
 
 // FSM
-auto fsm = FSM();
+auto fsm = FSM::Robot();
 
 int nic_setup(char *ifname)
 {
-    // initialise SOEM, bind socket to ifname
+    // Initialize SOEM, bind socket to ifname
     if (!ec_init(ifname))
     {
+        spdlog::critical("Could not initialize NIC {}, maybe it's unplugged...", ifname);
         return 1;
     }
 
-    // find and auto-config slaves
+    // Find and auto-config slaves
     if (!ec_config_init(FALSE))
     {
+        spdlog::critical("Could not auto configure slaves");
         return 1;
     }
 
-    printf("%d slaves found and configured.\n", ec_slavecount);
+    spdlog::info("{} slaves found and configured", ec_slavecount);
 
     // Map CoE drives
     for (auto cnt = 1; cnt <= ec_slavecount; cnt++)
@@ -52,19 +55,22 @@ int nic_setup(char *ifname)
         {
             if (fsm.A1ID == 0)
             {
-                printf("Assign %s %d as A1\n", slave.name, cnt);
+                spdlog::debug("Assign {} {} as A1", slave.name, cnt);
                 fsm.A1ID = cnt;
             }
             else if (fsm.A2ID == 0)
             {
-                printf("Assign %s %d as A2\n", slave.name, cnt);
+                spdlog::debug("Assign {} {} as A2", slave.name, cnt);
                 fsm.A2ID = cnt;
             }
         }
     }
 
-    assert(fsm.A1ID != 0);
-    assert(fsm.A2ID != 0);
+    if (fsm.A1ID == 0 || fsm.A2ID == 0)
+    {
+        spdlog::critical("One or more drives are missing");
+        return 1;
+    }
 
     // Drive startup params
     ec_slave[fsm.A1ID].PO2SOconfig = Delta::PO2SOconfig;
@@ -82,14 +88,15 @@ int nic_setup(char *ifname)
     usedmem = ec_config_map(&IOmap);
     if (!(usedmem <= sizeof(IOmap)))
     {
-        printf("IO Map not big enough");
+        spdlog::critical("IO Map not big enough");
+        return 1;
     }
 
-    printf("Slaves mapped and configured.\n");
+    spdlog::info("Slaves mapped and configured");
 
     ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
 
-    printf("DC capable : %s\n", (ec_configdc() ? "yes" : "no :("));
+    spdlog::debug("DC capable: {}", (ec_configdc() ? "yes" : "no :("));
 
     ec_slave[0].state = EC_STATE_OPERATIONAL;
     // send one valid process data to make outputs in slaves happy
@@ -110,16 +117,20 @@ int nic_setup(char *ifname)
 
 int main()
 {
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_pattern("%^[%=8l]%$ %s:%# %v");
+
+    // Set realtime priority
     struct sched_param schedp;
     memset(&schedp, 0, sizeof(schedp));
-    /* do not set priority above 49, otherwise sockets are starved */
+    // Do not set priority above 49, otherwise sockets are starved
     schedp.sched_priority = 30;
     sched_setscheduler(0, SCHED_FIFO, &schedp);
 
     // Setup EtherCAT interface:
     if (nic_setup(const_cast<char *>("enp2s0")) == 1)
     {
-        // Setup encountered and error and cannot continue.
+        spdlog::critical("Setup encountered an error and cannot continue");
         return 1;
     }
 
@@ -131,7 +142,7 @@ int main()
 
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
-        printf("Operational state reached for all slaves.\n");
+        spdlog::info("Operational state reached for all slaves.");
         auto inSync = FALSE;
 
         auto dx = 110.0;
@@ -162,14 +173,14 @@ int main()
         clock_gettime(CLOCK_MONOTONIC, &tick);
         TS::Increment(tick, CYCLETIME);
 
-        /* cyclic loop */
+        // Cyclic loop
         while (true)
         {
             ec_send_processdata();
             Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
             fsm.update();
-            if (fsm.next == Tracking)
+            if (fsm.next == FSM::Tracking)
             {
                 if (!inSync)
                 {
@@ -182,7 +193,7 @@ int main()
                     input.current_acceleration = {0.0, 0.0};
                     otg.reset();
 
-                    printf("Resync\n");
+                    spdlog::debug("Resync");
                     inSync = TRUE;
                 }
                 auto [theta1, theta2, phi] = IKScara::inverseKinematics(dx, dy);
@@ -214,19 +225,22 @@ int main()
                 }
                 auto &p = output.new_position;
 
-                fsm.A1OutPDO->target_position = IKScara::gap(p[0], fsm.A1InPDO->actual_position / GEAR, &fsm.A1GapAlarm) * GEAR;
-                fsm.A2OutPDO->target_position = IKScara::gap(p[1], fsm.A2InPDO->actual_position / GEAR, &fsm.A2GapAlarm) * GEAR;
+                fsm.A1OutPDO->target_position =
+                    IKScara::gap(p[0], fsm.A1InPDO->actual_position / GEAR, &fsm.A1GapAlarm) * GEAR;
+                fsm.A2OutPDO->target_position =
+                    IKScara::gap(p[1], fsm.A2InPDO->actual_position / GEAR, &fsm.A2GapAlarm) * GEAR;
 
                 // Set input parameters
                 output.pass_to_input(input);
-                // printf("positon: %f %f %f %f\n", theta1, theta2, p[0], p[1]);
+                // spdlog::debug("positon: {:03.2f} {:03.2f} {:03.2f} {:03.2f}", theta1,
+                // theta2, p[0], p[1]);
             }
             else
             {
                 inSync = false;
             }
 
-            // printf("Offset: %ld nS\n", toff);
+            // spdlog::debug("Offset: {}nS", toff);
 
             // calulate toff to get linux time and DC synced
             TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);

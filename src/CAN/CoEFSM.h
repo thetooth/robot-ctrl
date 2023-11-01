@@ -1,36 +1,13 @@
-#ifndef KICKCAT_CAN_ELMO_STATE_MACHINE_H
-#define KICKCAT_CAN_ELMO_STATE_MACHINE_H
+#ifndef CAN_COEFSM_HPP
+#define CAN_COEFSM_HPP
 
-#include <stdio.h>
 #include <chrono>
+#include <stdio.h>
 #include <thread>
-using namespace std::literals::chrono_literals;
 
-constexpr const char *strip_path(const char *path)
-{
-    const char *file = path;
-    while (*path)
-    {
-        if (*path++ == '/')
-        {
-            file = path;
-        }
-        if (*path == ':')
-        {
-            break;
-        }
-    }
-    return file;
-}
-#define STR1(x) #x
-#define STR2(x) STR1(x)
-#define LOCATION(suffix) strip_path(__FILE__ ":" STR2(__LINE__) suffix)
-#define DEBUG_PRINT(...)                           \
-    do                                             \
-    {                                              \
-        fprintf(stderr, "DEBUG: %s ", LOCATION()); \
-        fprintf(stderr, ##__VA_ARGS__);            \
-    } while (0);
+#include "spdlog/spdlog.h"
+
+using namespace std::literals::chrono_literals;
 
 /// \enum CANOpenState The different states of a DS402-compliant device.
 enum class CANOpenState
@@ -72,18 +49,20 @@ namespace status
         uint16_t const TARGET_REACHED = 1U << 10;
         uint16_t const INTERNAL_LIMIT_ACTIVE = 1U << 11;
         uint16_t const SETPOINT_ACKNOWLEDGE = 1U << 12;
-    }
+    } // namespace masks
 
     namespace value
     {
         /// \brief Some status word values corresponding to CANOpen states.
         uint16_t const OFF_STATE = masks::SWITCH_ON_DISABLED;
         uint16_t const READY_TO_SWITCH_ON_STATE = masks::VOLTAGE_ENABLED | masks::READY_TO_SWITCH_ON;
-        uint16_t const ON_STATE = masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::OPERATION_ENABLE | masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON;
-        uint16_t const DISABLED_STATE = masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON;
+        uint16_t const ON_STATE = masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::OPERATION_ENABLE |
+                                  masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON;
+        uint16_t const DISABLED_STATE =
+            masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON;
         uint16_t const FAULT_STATE = masks::FAULT_MODE;
-    }
-}
+    } // namespace value
+} // namespace status
 
 // control stores the possible control word values
 // For more infos, see DS402, page 35
@@ -101,7 +80,7 @@ namespace control
         uint16_t const QUICK_STOP = 0x0002U;
         uint16_t const SET_ABS_POINT_NOBLEND = 0x001FU;
         uint16_t const SET_POINT_RESET = 0x000FU;
-    }
+    } // namespace word
 
     // controlmode stores the available CAN control mode (also called "Mode of Operation")
     // For more infos, see DS402, page 37
@@ -114,7 +93,7 @@ namespace control
         POSITION_CYCLIC = 8 // Direct position control without ramps
     };
 
-}
+} // namespace control
 
 // Timeouts to prevent blocking the statemachine in case of failure
 constexpr std::chrono::nanoseconds MOTOR_RESET_DELAY = 10ms;
@@ -122,13 +101,26 @@ constexpr std::chrono::nanoseconds MOTOR_INIT_TIMEOUT = 1s;
 
 class CoEFSM
 {
-public:
+  public:
     void update(uint16_t status_word);
-    void setCommand(CANOpenCommand command) { command_ = command; };
-    uint16_t getControlWord() { return control_word_; }
-    bool compareState(CANOpenState desired) { return motor_state_ == desired; }
+    void setCommand(CANOpenCommand command)
+    {
+        command_ = command;
+    };
+    uint16_t getControlWord()
+    {
+        return control_word_;
+    }
+    bool compareState(CANOpenState desired)
+    {
+        return motor_state_ == desired;
+    }
+    std::string to_string() const
+    {
+        return "";
+    }
 
-private:
+  private:
     CANOpenCommand command_ = CANOpenCommand::NONE;
     CANOpenState motor_state_ = CANOpenState::OFF;
     std::chrono::nanoseconds start_motor_timestamp_ = 0ns;

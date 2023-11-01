@@ -3,11 +3,15 @@
 
 #include <thread>
 
+#include "nlohmann/json.hpp"
+
 #include "../FSM/fsm.hpp"
 
 namespace NC
 {
-    FSM *fsmPtr = nullptr;
+    using json = nlohmann::json;
+
+    FSM::Robot *fsmPtr = nullptr;
     void commandCbWrapper(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
     {
         if (fsmPtr != nullptr)
@@ -15,7 +19,7 @@ namespace NC
             fsmPtr->commandCb(nc, sub, msg, closur);
         }
     }
-    void monitor(FSM *fsm)
+    void monitor(FSM::Robot *fsm)
     {
         // Communications
         natsConnection *nc = nullptr;
@@ -46,12 +50,14 @@ namespace NC
                 alarm = true;
             }
 
-            auto [ax, ay] = IKScara::forwardKinematics(fsm->A1InPDO->actual_position / GEAR, fsm->A2InPDO->actual_position / GEAR);
+            auto [ax, ay] =
+                IKScara::forwardKinematics(fsm->A1InPDO->actual_position / GEAR, fsm->A2InPDO->actual_position / GEAR);
 
             // Status
             json stats = {
                 {"run", fsm->run},
                 {"alarm", alarm},
+                {"state", fsm->to_string()},
                 {"dx", ax},
                 {"dy", ay},
                 {"dAlpha", fsm->A1InPDO->actual_position / GEAR},
@@ -70,6 +76,6 @@ namespace NC
             TS::Increment(tick, period);
         }
     };
-}
+} // namespace NC
 
 #endif

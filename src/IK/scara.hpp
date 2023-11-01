@@ -1,15 +1,17 @@
-#ifndef IK_HPP
-#define IK_HPP
+#ifndef IK_SCARA_HPP
+#define IK_SCARA_HPP
 
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
 #include <tuple>
+
+#include "spdlog/spdlog.h"
 
 namespace IKScara
 {
-#define L1 200.0
-#define L2 200.0
-    // FORWARD KINEMATICS
+    auto L1 = 200.0;
+    auto L2 = 200.0;
+
     std::tuple<double, double> forwardKinematics(double theta1, double theta2)
     {
         double theta1F = theta1 * M_PI / 180; // degrees to radians
@@ -36,25 +38,25 @@ namespace IKScara
         theta1 = theta1 * 180 / M_PI;
 
         // Angles adjustment depending in which quadrant the final tool coordinate x,y is
-        if (x >= 0 & y >= 0)
+        if (x >= 0 && y >= 0)
         { // 1st quadrant
             theta1 = 90 - theta1;
         }
-        if (x < 0 & y > 0)
+        if (x < 0 && y > 0)
         { // 2nd quadrant
             theta1 = 90 - theta1;
         }
-        if (x < 0 & y < 0)
+        if (x < 0 && y < 0)
         { // 3d quadrant
             theta1 = 270 - theta1;
             phi = 270 - theta1 - theta2;
             phi = (-1) * phi;
         }
-        if (x > 0 & y < 0)
+        if (x > 0 && y < 0)
         { // 4th quadrant
             theta1 = -90 - theta1;
         }
-        if (x < 0 & y == 0)
+        if (x < 0 && y == 0)
         {
             theta1 = 270 + theta1;
         }
@@ -64,7 +66,7 @@ namespace IKScara
         phi = (-1) * phi;
 
         // Angle adjustment depending in which quadrant the final tool coordinate x,y is
-        if (x < 0 & y < 0)
+        if (x < 0 && y < 0)
         { // 3d quadrant
             phi = 270 - theta1 - theta2;
         }
@@ -82,7 +84,7 @@ namespace IKScara
         if (abs(target - current) > 5)
         {
             *alarm = true;
-            printf("WARNING GAP: %f\n", abs(target - current));
+            spdlog::warn("WARNING GAP: %f\n", abs(target - current));
             if (current > target)
             {
                 return current - 0.5;
@@ -92,6 +94,6 @@ namespace IKScara
 
         return target;
     }
-}
+} // namespace IKScara
 
 #endif

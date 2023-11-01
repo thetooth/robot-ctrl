@@ -1,6 +1,6 @@
 #include "fsm.hpp"
 
-void FSM::update()
+void FSM::Robot::update()
 {
     switch (next)
     {
@@ -38,11 +38,17 @@ void FSM::update()
         {
             A1OutPDO->target_position = A1InPDO->actual_position;
             A2OutPDO->target_position = A2InPDO->actual_position;
+        }
+        if (A1.compareState(CANOpenState::ON) && A2.compareState(CANOpenState::ON))
+        {
             next = Homing;
         }
         break;
     case Homing:
-        next = Tracking;
+        if (home())
+        {
+            next = Tracking;
+        }
         break;
     case Tracking:
         if (!estop || !run)

@@ -42,11 +42,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/int")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 add_subdirectory(src)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/spdlog)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ruckig)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/SOEM)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nats.c)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/json)
 
+target_include_directories(${PROJECT_NAME} PRIVATE  ${CMAKE_CURRENT_SOURCE_DIR}/spdlog/include)
 target_include_directories(${PROJECT_NAME} PRIVATE  ${CMAKE_CURRENT_SOURCE_DIR}/SOEM/soem)
 target_include_directories(${PROJECT_NAME} PRIVATE  ${CMAKE_CURRENT_SOURCE_DIR}/SOEM/osal)
 target_include_directories(${PROJECT_NAME} PRIVATE  ${CMAKE_CURRENT_SOURCE_DIR}/SOEM/osal/linux)
