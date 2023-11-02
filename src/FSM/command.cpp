@@ -25,6 +25,10 @@ void FSM::Robot::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]]
         dx = payload["position"]["x"].template get<double>();
         dy = payload["position"]["y"].template get<double>();
     }
+    if (command.compare("reset") == 0)
+    {
+        needsHoming = true;
+    }
     if (command.compare("stop") == 0)
     {
         run = false;
