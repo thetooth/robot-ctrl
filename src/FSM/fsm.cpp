@@ -10,14 +10,14 @@ void FSM::Robot::update()
         {
             diagMsgs.clear();
             diagMsgs.push_back("Entering run mode");
-            Common::wkc += Common::Write8(A1ID, 0x6060, 0, 0x8);
-            Common::wkc += Common::Write8(A2ID, 0x6060, 0, 0x8);
+
             A1.setCommand(CANOpenCommand::ENABLE);
             A2.setCommand(CANOpenCommand::ENABLE);
             next = Startup;
         }
         if (!estop)
         {
+            needsHoming = true;
             next = Halt;
         }
         break;
@@ -26,8 +26,8 @@ void FSM::Robot::update()
         A2.setCommand(CANOpenCommand::DISABLE);
         if (A1.compareState(CANOpenState::OFF) && A2.compareState(CANOpenState::OFF))
         {
-            Common::wkc += Common::Write8(A1ID, 0x6060, 0, 0x0);
-            Common::wkc += Common::Write8(A2ID, 0x6060, 0, 0x0);
+            Common::wkc += Common::SetModeOfOperation(A1ID, Common::None);
+            Common::wkc += Common::SetModeOfOperation(A2ID, Common::None);
             next = Idle;
         }
         break;
@@ -44,27 +44,53 @@ void FSM::Robot::update()
         }
         if (A1.compareState(CANOpenState::ON) && A2.compareState(CANOpenState::ON))
         {
-            diagMsgs.push_back("Drives entered on state, enter homing");
-            next = Homing;
+            if (needsHoming)
+            {
+                diagMsgs.push_back("Drives entered on state, enter homing");
+                Common::wkc += Common::SetModeOfOperation(A1ID, Common::Homing);
+                Common::wkc += Common::SetModeOfOperation(A2ID, Common::Homing);
+                next = Homing;
+            }
+            else
+            {
+                diagMsgs.push_back("Drives entered on state, enter tracking (needsHoming == FALSE)");
+                Common::wkc += Common::SetModeOfOperation(A1ID, Common::CSP);
+                Common::wkc += Common::SetModeOfOperation(A2ID, Common::CSP);
+                next = Tracking;
+            }
+        }
+        if (!estop || !run)
+        {
+            next = Halt;
         }
         break;
-    case Homing:
-        if (homing())
+    case Homing: {
+        auto homingResult = homing();
+        if (homingResult)
         {
             diagMsgs.push_back("Homing complete, enter tracking");
+            Common::wkc += Common::SetModeOfOperation(A1ID, Common::CSP);
+            Common::wkc += Common::SetModeOfOperation(A2ID, Common::CSP);
+            needsHoming = false;
             next = Tracking;
         }
+        if (!estop || !run)
+        {
+            next = Halt;
+        }
         break;
-    case Tracking:
-        auto res = tracking();
-        if (!estop || !run || res)
+    }
+    case Tracking: {
+        auto trackingResult = tracking();
+        if (!estop || !run || trackingResult)
         {
             diagMsgs.push_back("Tracking interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run) +
-                               " Tracking: " + std::to_string(res));
+                               " Tracking: " + std::to_string(trackingResult));
             inSync = false;
             next = Halt;
         }
         break;
+    }
     }
 
     A1.update(A1InPDO->status_word);

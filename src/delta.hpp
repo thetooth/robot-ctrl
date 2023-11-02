@@ -31,11 +31,16 @@ namespace Delta
     [[maybe_unused]] static int PO2SOconfig(uint16_t slave)
     {
         // Set operational mode
-        Common::wkc += Common::Write8(slave, 0x6060, 0, 0x0);
+        Common::wkc += Common::SetModeOfOperation(slave, Common::None);
 
         // Set interpolation values
         Common::wkc += Common::Write8(slave, 0x60C2, 1, 2);
         Common::wkc += Common::Write8(slave, 0x60C2, 2, -3);
+
+        // Set homing mode
+        Common::wkc += Common::Write8(slave, 0x6098, 0, 34);
+        Common::wkc += Common::Write32(slave, 0x6099, 1, 100);
+        Common::wkc += Common::Write32(slave, 0x6099, 2, 100);
 
         const auto mapPDO = [&](const uint16_t PDO_map, const uint32_t *data, const uint8_t dataSize,
                                 const uint32_t SM_map) -> int {

@@ -24,6 +24,23 @@ namespace Common
         wkc = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
         return wkc;
     }
+    [[maybe_unused]] static int Write32(uint16_t slave, uint16_t index, uint8_t subindex, uint32_t value)
+    {
+        int wkc;
+        wkc = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
+        return wkc;
+    }
+
+    enum ModesOfOperation : uint8_t
+    {
+        None,
+        Homing = 0x6,
+        CSP = 0x8
+    };
+    [[maybe_unused]] static int SetModeOfOperation(uint16_t slave, ModesOfOperation value)
+    {
+        return Write8(slave, 0x6060, 0, value);
+    }
 } // namespace Common
 
 namespace TS

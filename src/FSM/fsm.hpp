@@ -32,6 +32,7 @@ namespace FSM
       public:
         bool run;
         bool estop = true;
+        bool needsHoming = true;
         bool inSync;
 
         State next = Idle;
@@ -66,6 +67,7 @@ namespace FSM
             input.current_acceleration = {0.0, 0.0};
             input.target_position = {0.0, 0.0};
             input.target_velocity = {0.0, 0.0};
+            input.synchronization = Synchronization::Phase;
         }
         void assignDrives()
         {

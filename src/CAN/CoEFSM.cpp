@@ -51,7 +51,7 @@ void CoEFSM::update(uint16_t status_word)
             command_ = CANOpenCommand::NONE;
             break;
         case CANOpenState::FAULT:
-            spdlog::debug("CANOpenState FAULT");
+            spdlog::error("CANOpenState FAULT");
             break;
         }
 
@@ -60,7 +60,7 @@ void CoEFSM::update(uint16_t status_word)
             (motor_state_ != CANOpenState::OFF) and
             ((std::chrono::system_clock::now().time_since_epoch() - start_motor_timestamp_) > MOTOR_INIT_TIMEOUT))
         {
-            spdlog::debug("Can't enable motor: timeout, start again from OFF state.");
+            spdlog::warn("Can't enable motor: timeout, start again from OFF state.");
             motor_state_ = CANOpenState::OFF;
         }
         break;
@@ -76,6 +76,29 @@ void CoEFSM::update(uint16_t status_word)
             command_ = CANOpenCommand::NONE;
         }
         break;
+    }
+    case CANOpenCommand::HOME: {
+        switch (motor_state_)
+        {
+        case CANOpenState::ON:
+            control_word_ = control::word::SET_ABS_POINT_NOBLEND;
+            if ((status_word_ & status::value::HOMING_COMPLETE_STATE) == status::value::HOMING_COMPLETE_STATE)
+            {
+                spdlog::debug("HOMING_COMPLETE status achieved");
+                motor_state_ = CANOpenState::HOMING_COMPLETE;
+            }
+
+            break;
+        case CANOpenState::HOMING_COMPLETE:
+            control_word_ = control::word::ENABLE_OPERATION;
+            // Reset command now that the desired state has been reached.
+            command_ = CANOpenCommand::NONE;
+            break;
+        default:
+        case CANOpenState::FAULT:
+            spdlog::error("CANOpenState FAULT");
+            break;
+        }
     }
     case CANOpenCommand::NONE:
     default: {

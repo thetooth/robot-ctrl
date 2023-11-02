@@ -17,6 +17,7 @@ enum class CANOpenState
     PREPARE_TO_SWITCH_ON,
     SWITCH_ON,
     ON,
+    HOMING_COMPLETE,
     FAULT
 };
 
@@ -26,6 +27,7 @@ enum class CANOpenCommand
     NONE,
     ENABLE,
     DISABLE,
+    HOME
 };
 
 // status stores the possible CAN states
@@ -58,6 +60,9 @@ namespace status
         uint16_t const READY_TO_SWITCH_ON_STATE = masks::VOLTAGE_ENABLED | masks::READY_TO_SWITCH_ON;
         uint16_t const ON_STATE = masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::OPERATION_ENABLE |
                                   masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON;
+        uint16_t const HOMING_COMPLETE_STATE = masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::OPERATION_ENABLE |
+                                               masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON | masks::TARGET_REACHED |
+                                               masks::SETPOINT_ACKNOWLEDGE;
         uint16_t const DISABLED_STATE =
             masks::QUICK_STOP | masks::VOLTAGE_ENABLED | masks::SWITCHED_ON | masks::READY_TO_SWITCH_ON;
         uint16_t const FAULT_STATE = masks::FAULT_MODE;
