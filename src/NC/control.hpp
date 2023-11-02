@@ -28,9 +28,17 @@ namespace NC
         fsmPtr = fsm;
 
         auto ncStatus = natsConnection_ConnectTo(&nc, NATS_DEFAULT_URL);
-        assert(ncStatus == NATS_OK);
+        if (ncStatus != NATS_OK)
+        {
+            spdlog::error("NATS connection failure: {}", natsStatus_GetText(ncStatus));
+            return;
+        }
         ncStatus = natsConnection_Subscribe(&ctrlSub, nc, "motion.command", commandCbWrapper, NULL);
-        assert(ncStatus == NATS_OK);
+        if (ncStatus != NATS_OK)
+        {
+            spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
+            return;
+        }
 
         // Timing
         struct timespec tick;
@@ -40,7 +48,8 @@ namespace NC
         clock_gettime(CLOCK_MONOTONIC, &tick);
         TS::Increment(tick, period);
 
-        for (;;)
+        bool run = true;
+        while (run)
         {
             assert(fsm != NULL);
 
@@ -73,6 +82,11 @@ namespace NC
             auto payload = stats.dump();
             natsConnection_Publish(nc, "motion.status", payload.c_str(), payload.length());
 
+            if (!fsm->estop && fsm->next == FSM::Idle)
+            {
+                run = false;
+            }
+
             // calulate toff to get linux time and DC synced
             TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
             // Apply offset to timespec
@@ -82,6 +96,14 @@ namespace NC
             // Increment timespec by cycletime
             TS::Increment(tick, period);
         }
+        natsSubscription_Unsubscribe(ctrlSub);
+        natsSubscription_Destroy(ctrlSub);
+
+        natsConnection_FlushTimeout(nc, 1000);
+        natsConnection_Close(nc);
+        natsConnection_Destroy(nc);
+
+        spdlog::trace("Monitor thread says goodnight");
     };
 } // namespace NC
 
