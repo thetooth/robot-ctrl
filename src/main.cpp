@@ -7,6 +7,8 @@
 
 #include <chrono>
 #include <math.h>
+#include <sanitizer/lsan_interface.h>
+#include <signal.h>
 #include <thread>
 
 #include "ethercat.h"
@@ -24,6 +26,13 @@ unsigned int usedmem;
 
 // FSM
 auto fsm = FSM::Robot();
+
+void abort_handler([[maybe_unused]] int signum)
+{
+    printf("\n");
+    spdlog::critical("Aborting due to SIGINT");
+    fsm.estop = false;
+}
 
 int nic_setup(char *ifname)
 {
@@ -116,6 +125,8 @@ int main()
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern("%^[%=8l]%$ %s:%# %v");
 
+    signal(SIGINT, abort_handler);
+
     // Set realtime priority
     struct sched_param schedp;
     memset(&schedp, 0, sizeof(schedp));
@@ -154,6 +165,13 @@ int main()
             Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
             fsm.update();
+            if (!fsm.estop && fsm.next == FSM::Idle)
+            {
+                monitor.join();
+                ec_close();
+                // __lsan_do_leak_check();
+                return 1;
+            }
 
             // spdlog::debug("Offset: {}nS", toff);
 

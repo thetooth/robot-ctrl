@@ -42,12 +42,18 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             -Wno-gnu-anonymous-struct
             -Wno-gnu-zero-variadic-macro-arguments
             -Wno-nested-anon-types
+            # -fsanitize=address
         )
     endif()
     target_compile_options(
         ${PROJECT_NAME}
         PUBLIC
             ${CUSTOM_COMPILE_OPTIONS}
+    )
+    target_link_options(
+        ${PROJECT_NAME}
+        PUBLIC
+            # -fsanitize=address
     )
 endif()
 
