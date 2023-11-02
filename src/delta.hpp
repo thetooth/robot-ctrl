@@ -11,21 +11,23 @@ namespace Delta
     // uint32_t is 0x[Address(4byte), SubIndex(2byte), typeSizeInBits(2byte)]
     typedef struct PACKED
     {
-        uint16_t control_word;   // 0x6040
-        int32_t target_position; // 0x607A PPU
-        int32_t target_velocity; // 0x60FF 0.1 rpm
-        int16_t target_torque;   // 0x6071 0.1 %
+        uint16_t control_word;    // 0x6040
+        int32_t target_position;  // 0x607A PPU
+        int32_t target_velocity;  // 0x60FF 0.1 rpm
+        int16_t target_torque;    // 0x6071 0.1 %
+        uint32_t digital_outputs; // 0x60FE sub 1 [16-19 DO1-DO4]
     } rx_t;
-    constexpr uint32_t rx_mapping[] = {0x60400010, 0x607A0020, 0x60FF0020, 0x60710010};
+    constexpr uint32_t rx_mapping[] = {0x60400010, 0x607A0020, 0x60FF0020, 0x60710010, 0x60FE0120};
     constexpr uint32_t rx_mapping_count = sizeof(rx_mapping) / sizeof(uint32_t);
 
     typedef struct PACKED
     {
         uint16_t status_word;    // 0x6041
         int32_t actual_position; // 0x6064 PPU
-        int16_t actual_velocity; // 0x606C 0.1 rpm
+        int32_t actual_velocity; // 0x606C 0.1 rpm
+        uint32_t digital_inputs; // 0x60FD [0 Neg Limit][1 Pos Limit][2 Homing switch][16-19 DI1-DI4]
     } tx_t;
-    constexpr uint32_t tx_mapping[] = {0x60410010, 0x60640020, 0x606C0020};
+    constexpr uint32_t tx_mapping[] = {0x60410010, 0x60640020, 0x606C0020, 0x60FD0020};
     constexpr uint32_t tx_mapping_count = sizeof(tx_mapping) / sizeof(uint32_t);
 
     [[maybe_unused]] static int PO2SOconfig(uint16_t slave)
@@ -52,7 +54,7 @@ namespace Delta
             for (uint32_t i = 0; i < dataSize; i++)
             {
                 uint8_t subIndex = static_cast<uint8_t>(i + 1);
-                wkc += ec_SDOwrite(slave, SM_map, subIndex, FALSE, sizeof(data[i]), &data[i], EC_TIMEOUTRXM);
+                wkc += ec_SDOwrite(slave, PDO_map, subIndex, FALSE, sizeof(data[i]), &data[i], EC_TIMEOUTRXM);
             }
             // Enable mapping by setting number of registers in PDO_MAP subindex 0
             wkc += ec_SDOwrite(slave, PDO_map, 0, FALSE, sizeof(dataSize), &dataSize, EC_TIMEOUTRXM);
