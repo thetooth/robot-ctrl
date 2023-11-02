@@ -21,7 +21,7 @@ enum class CANOpenState
     FAULT
 };
 
-/// \enum CANOpenrCommand The command to send to the CANOpen state machine.
+/// \enum CANOpenCommand The command to send to the CANOpen state machine.
 enum class CANOpenCommand
 {
     NONE,
@@ -100,7 +100,7 @@ namespace control
 
 } // namespace control
 
-// Timeouts to prevent blocking the statemachine in case of failure
+// Timeouts to prevent blocking the state machine in case of failure
 constexpr std::chrono::nanoseconds MOTOR_RESET_DELAY = 10ms;
 constexpr std::chrono::nanoseconds MOTOR_INIT_TIMEOUT = 1s;
 

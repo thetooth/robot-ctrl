@@ -75,7 +75,7 @@ namespace TS
         *offsettime = -(delta / 100) - (*integral / 20);
     }
 
-    [[maybe_unused]] static void AppyOffset(struct timespec *ts, int64 addtime)
+    [[maybe_unused]] static void ApplyOffset(struct timespec *ts, int64 addtime)
     {
         int64 sec, nsec;
 

@@ -87,13 +87,13 @@ namespace NC
                 run = false;
             }
 
-            // calulate toff to get linux time and DC synced
+            // calculate toff to get linux time and DC synced
             TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
             // Apply offset to timespec
-            TS::AppyOffset(&tick, toff);
+            TS::ApplyOffset(&tick, toff);
             // Monotonic sleep
             clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tick, NULL);
-            // Increment timespec by cycletime
+            // Increment timespec by cycle time
             TS::Increment(tick, period);
         }
         natsSubscription_Unsubscribe(ctrlSub);

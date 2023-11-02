@@ -44,7 +44,7 @@ bool FSM::Robot::tracking()
 
     // Set input parameters
     output.pass_to_input(input);
-    spdlog::trace("positon: {:03.2f} {:03.2f} {:03.2f} {:03.2f}", alpha, beta, p[0], p[1]);
+    spdlog::trace("position: {:03.2f} {:03.2f} {:03.2f} {:03.2f}", alpha, beta, p[0], p[1]);
 
     return false;
 }
