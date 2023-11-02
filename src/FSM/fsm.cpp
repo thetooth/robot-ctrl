@@ -38,7 +38,6 @@ void FSM::Robot::update()
         */
         if (A1.compareState(CANOpenState::SWITCH_ON) && A2.compareState(CANOpenState::SWITCH_ON))
         {
-            diagMsgs.push_back("Drives entered switch on state, setting intial target to current target");
             A1OutPDO->target_position = A1InPDO->actual_position;
             A2OutPDO->target_position = A2InPDO->actual_position;
         }
@@ -46,14 +45,15 @@ void FSM::Robot::update()
         {
             if (needsHoming)
             {
-                diagMsgs.push_back("Drives entered on state, enter homing");
+                diagMsgs.push_back("Drives entered ON state, enter homing");
                 Common::wkc += Common::SetModeOfOperation(A1ID, Common::Homing);
                 Common::wkc += Common::SetModeOfOperation(A2ID, Common::Homing);
+                Common::wkc += Common::SetHomingOffset(A1ID, -90 * GEAR);
                 next = Homing;
             }
             else
             {
-                diagMsgs.push_back("Drives entered on state, enter tracking (needsHoming == FALSE)");
+                diagMsgs.push_back("Drives entered ON state, enter tracking");
                 Common::wkc += Common::SetModeOfOperation(A1ID, Common::CSP);
                 Common::wkc += Common::SetModeOfOperation(A2ID, Common::CSP);
                 next = Tracking;

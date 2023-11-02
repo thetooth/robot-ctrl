@@ -73,11 +73,6 @@ double IKScara::gap(double target, double current, bool *alarm)
     {
         *alarm = true;
         spdlog::warn("GAP: {}", abs(target - current));
-        // if (current > target)
-        // {
-        //     return current - 0.5;
-        // }
-        // return current + 0.5;
         return current;
     }
 

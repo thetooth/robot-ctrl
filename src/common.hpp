@@ -41,6 +41,12 @@ namespace Common
     {
         return Write8(slave, 0x6060, 0, value);
     }
+    [[maybe_unused]] static int SetHomingOffset(uint16_t slave, int32_t value)
+    {
+        int wkc;
+        wkc = ec_SDOwrite(slave, 0x607C, 0, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
+        return wkc;
+    }
 } // namespace Common
 
 namespace TS
