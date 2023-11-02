@@ -1,6 +1,6 @@
 #include "fsm.hpp"
 
-bool FSM::Robot::home()
+bool FSM::Robot::homing()
 {
     return true;
 }

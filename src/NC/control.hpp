@@ -19,7 +19,7 @@ namespace NC
             fsmPtr->commandCb(nc, sub, msg, closur);
         }
     }
-    void monitor(FSM::Robot *fsm)
+    void Monitor(FSM::Robot *fsm)
     {
         // Communications
         natsConnection *nc = nullptr;
@@ -34,7 +34,7 @@ namespace NC
 
         // Timing
         struct timespec tick;
-        int64_t period = int64_t(16.666666666667e+6);
+        int64_t period = int64_t(16.666666666667e+6 / 2.0);
         int64_t toff = 0;
         int64_t integral = 0;
         clock_gettime(CLOCK_MONOTONIC, &tick);
@@ -50,6 +50,12 @@ namespace NC
                 alarm = true;
             }
 
+            auto diagStr = std::string("");
+            for (auto msg : fsm->diagMsgs)
+            {
+                diagStr.append(msg + "\n");
+            }
+
             auto [ax, ay] =
                 IKScara::forwardKinematics(fsm->A1InPDO->actual_position / GEAR, fsm->A2InPDO->actual_position / GEAR);
 
@@ -58,6 +64,7 @@ namespace NC
                 {"run", fsm->run},
                 {"alarm", alarm},
                 {"state", fsm->to_string()},
+                {"diagMsg", diagStr},
                 {"dx", ax},
                 {"dy", ay},
                 {"dAlpha", fsm->A1InPDO->actual_position / GEAR},

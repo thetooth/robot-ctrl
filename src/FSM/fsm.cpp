@@ -8,6 +8,8 @@ void FSM::Robot::update()
     case Idle:
         if (estop && run)
         {
+            diagMsgs.clear();
+            diagMsgs.push_back("Entering run mode");
             Common::wkc += Common::Write8(A1ID, 0x6060, 0, 0x8);
             Common::wkc += Common::Write8(A2ID, 0x6060, 0, 0x8);
             A1.setCommand(CANOpenCommand::ENABLE);
@@ -36,23 +38,30 @@ void FSM::Robot::update()
         */
         if (A1.compareState(CANOpenState::SWITCH_ON) && A2.compareState(CANOpenState::SWITCH_ON))
         {
+            diagMsgs.push_back("Drives entered switch on state, setting intial target to current target");
             A1OutPDO->target_position = A1InPDO->actual_position;
             A2OutPDO->target_position = A2InPDO->actual_position;
         }
         if (A1.compareState(CANOpenState::ON) && A2.compareState(CANOpenState::ON))
         {
+            diagMsgs.push_back("Drives entered on state, enter homing");
             next = Homing;
         }
         break;
     case Homing:
-        if (home())
+        if (homing())
         {
+            diagMsgs.push_back("Homing complete, enter tracking");
             next = Tracking;
         }
         break;
     case Tracking:
-        if (!estop || !run)
+        auto res = tracking();
+        if (!estop || !run || res)
         {
+            diagMsgs.push_back("Tracking interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run) +
+                               " Tracking: " + std::to_string(res));
+            inSync = false;
             next = Halt;
         }
         break;

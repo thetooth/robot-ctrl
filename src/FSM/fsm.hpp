@@ -1,16 +1,21 @@
 #ifndef FSM_ROBOT_HPP
 #define FSM_ROBOT_HPP
 
+#include <deque>
+
 #include "ethercat.h"
 #include "nats.h"
 #include "nlohmann/json.hpp"
+#include "ruckig/ruckig.hpp"
 
 #include "../CAN/CoEFSM.h"
+#include "../IK/scara.hpp"
 #include "../common.hpp"
 #include "../delta.hpp"
 
 namespace FSM
 {
+    using namespace ruckig;
     using json = nlohmann::json;
 
     enum State
@@ -27,11 +32,20 @@ namespace FSM
       public:
         bool run;
         bool estop = true;
+        bool inSync;
 
         State next = Idle;
+        std::deque<std::string> diagMsgs = {};
 
         CoEFSM A1;
         CoEFSM A2;
+
+        // Create instances: the Ruckig OTG as well as input and output parameters
+        Ruckig<2> otg{0.002}; // control cycle
+        InputParameter<2> input;
+        OutputParameter<2> output;
+
+        double dx, dy = 150;
 
         // PDO memory
         Delta::tx_t *A1InPDO, *A2InPDO;
@@ -39,6 +53,20 @@ namespace FSM
         int A1ID, A2ID = 0;
         bool A1GapAlarm, A2GapAlarm = false;
 
+        Robot()
+        {
+            // Set dynamic limits
+            input.max_velocity = {1000.0, 1000.0};
+            input.max_acceleration = {1000.0, 1000.0};
+            input.max_jerk = {10000.0, 10000.0};
+
+            // Set initial conditions
+            input.current_position = {0.0, 0.0};
+            input.current_velocity = {0.0, 0.0};
+            input.current_acceleration = {0.0, 0.0};
+            input.target_position = {0.0, 0.0};
+            input.target_velocity = {0.0, 0.0};
+        }
         void assignDrives()
         {
             A1OutPDO = (Delta::rx_t *)ec_slave[A1ID].outputs;
@@ -49,31 +77,11 @@ namespace FSM
             A1.setCommand(CANOpenCommand::DISABLE);
             A2.setCommand(CANOpenCommand::DISABLE);
         }
-
         void update();
-        bool home();
-
+        bool homing();
+        bool tracking();
         void commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
-                       [[maybe_unused]] void *closur)
-        {
-            auto payload = json::parse(natsMsg_GetData(msg));
-            if (!payload["command"].is_string())
-            {
-                spdlog::warn("Invalid JSON received in command handler");
-                return;
-            }
-            auto command = payload["command"].template get<std::string>();
-
-            if (command.compare("start") == 0 && estop)
-            {
-                run = true;
-            }
-            if (command.compare("stop") == 0)
-            {
-                run = false;
-            }
-            natsMsg_Destroy(msg);
-        }
+                       [[maybe_unused]] void *closur);
 
         std::string to_string() const
         {

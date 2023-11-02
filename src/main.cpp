@@ -16,11 +16,7 @@
 #include "spdlog/spdlog.h"
 
 #include "FSM/fsm.hpp"
-#include "IK/scara.hpp"
 #include "NC/control.hpp"
-#include "common.hpp"
-
-using namespace ruckig;
 
 // EtherCAT variables:
 char IOmap[4096];
@@ -138,33 +134,11 @@ int main()
     fsm.assignDrives();
 
     // Setup message bus
-    auto monitor = std::thread(NC::monitor, &fsm);
+    auto monitor = std::thread(NC::Monitor, &fsm);
 
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
         spdlog::info("Operational state reached for all slaves.");
-        auto inSync = FALSE;
-
-        auto dx = 110.0;
-        auto dy = 170.0;
-        auto pathPos = 0;
-
-        // Create instances: the Ruckig OTG as well as input and output parameters
-        Ruckig<2> otg{0.002}; // control cycle
-        InputParameter<2> input;
-        OutputParameter<2> output;
-
-        // Set input parameters
-        input.max_velocity = {1000.0, 1000.0};
-        input.max_acceleration = {1000.0, 1000.0};
-        input.max_jerk = {1000.0, 1000.0};
-
-        input.current_position = {0.0, 0.0};
-        input.current_velocity = {0.0, 0.0};
-        input.current_acceleration = {0.0, 0.0};
-
-        input.target_position = {0.0, 0.0};
-        input.target_velocity = {0.0, 0.0};
 
         // Timing
         struct timespec tick;
@@ -180,65 +154,6 @@ int main()
             Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
             fsm.update();
-            if (fsm.next == FSM::Tracking)
-            {
-                if (!inSync)
-                {
-                    // Set input parameters
-                    input.current_position = {
-                        fsm.A1InPDO->actual_position / GEAR,
-                        fsm.A2InPDO->actual_position / GEAR,
-                    };
-                    input.current_velocity = {0.0, 0.0};
-                    input.current_acceleration = {0.0, 0.0};
-                    otg.reset();
-
-                    spdlog::debug("Resync");
-                    inSync = TRUE;
-                }
-                auto [theta1, theta2, phi] = IKScara::inverseKinematics(dx, dy);
-
-                input.target_position[0] = theta1;
-                input.target_position[1] = theta2;
-
-                auto res = otg.update(input, output);
-                if (res == ruckig::Finished)
-                {
-                    switch (pathPos)
-                    {
-                    case 0:
-                    default:
-                        pathPos = 0;
-                        dx = 0;
-                        dy = 300;
-                        break;
-                    case 1:
-                        dx = -120;
-                        dy = 36;
-                        break;
-                    case 2:
-                        dx = 136;
-                        dy = -50;
-                        break;
-                    }
-                    pathPos++;
-                }
-                auto &p = output.new_position;
-
-                fsm.A1OutPDO->target_position =
-                    IKScara::gap(p[0], fsm.A1InPDO->actual_position / GEAR, &fsm.A1GapAlarm) * GEAR;
-                fsm.A2OutPDO->target_position =
-                    IKScara::gap(p[1], fsm.A2InPDO->actual_position / GEAR, &fsm.A2GapAlarm) * GEAR;
-
-                // Set input parameters
-                output.pass_to_input(input);
-                // spdlog::debug("positon: {:03.2f} {:03.2f} {:03.2f} {:03.2f}", theta1,
-                // theta2, p[0], p[1]);
-            }
-            else
-            {
-                inSync = false;
-            }
 
             // spdlog::debug("Offset: {}nS", toff);
 
