@@ -5,7 +5,7 @@
 
 #include "ethercat.h"
 
-#define GEAR (46603.0 * 10.0 * 2.78) // Units per degree * gearbox * pulley
+#define GEAR (46603.0 * 10.0 * 3.44) // Units per degree * gearbox * pulley
 #define SYNC0 2e6
 #define CYCLETIME SYNC0
 
