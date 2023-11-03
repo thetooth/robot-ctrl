@@ -22,8 +22,12 @@ namespace FSM
     {
         Idle,
         Halt,
-        Startup,
+        Halting,
+        Start,
+        Starting,
+        Home,
         Homing,
+        Track,
         Tracking,
     };
 
@@ -33,6 +37,7 @@ namespace FSM
         bool run;
         bool estop = true;
         bool needsHoming = true;
+        bool trackAfterHoming = true;
         bool inSync;
 
         State next = Idle;
@@ -58,7 +63,7 @@ namespace FSM
         {
             // Set dynamic limits
             input.max_velocity = {1000.0, 1000.0};
-            input.max_acceleration = {1000.0, 1000.0};
+            input.max_acceleration = {3000.0, 3000.0};
             input.max_jerk = {10000.0, 10000.0};
 
             // Set initial conditions
@@ -80,29 +85,10 @@ namespace FSM
             A2.setCommand(CANOpenCommand::DISABLE);
         }
         void update();
-        bool homing();
         bool tracking();
         void commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
                        [[maybe_unused]] void *closur);
-
-        std::string to_string() const
-        {
-            switch (next)
-            {
-            case Idle:
-                return "Idle";
-            case Halt:
-                return "Halt";
-            case Startup:
-                return "Startup";
-            case Homing:
-                return "Homing";
-            case Tracking:
-                return "Tracking";
-            default:
-                return "[Unknown State]";
-            }
-        }
+        std::string to_string() const;
     };
 } // namespace FSM
 #endif
