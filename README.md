@@ -11,14 +11,14 @@ skew_tick=1 rcu_nocb_poll rcu_nocbs=1-2 nohz=on nohz_full=1-2 kthread_cpus=0 irq
 And a pair of Delta B3-E servo drives, although you can use any drive after checking the PDO mapping.
 
 Control is done over NATS:
-```json
+```bash
 # Receive status payload (120Hz broadcast rate)
 nats sub 'motion.status'
 {
     "run": true,
     "alarm": false,
     "state": "Tracking",
-    "diagMsg": "Entering run mode\n",
+    "diagMsg": "Errors should end up here...",
     "dx": -8.082951410415262e-06,
     "dy": 150.00000688454662,
     "dAlpha": 157.97568918665038,
