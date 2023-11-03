@@ -27,11 +27,17 @@ unsigned int usedmem;
 // FSM
 auto fsm = FSM::Robot();
 
+auto priorAbort = false;
 void abort_handler([[maybe_unused]] int signum)
 {
     printf("\n");
     spdlog::critical("Aborting due to SIGINT");
     fsm.estop = false;
+    if (priorAbort)
+    {
+        exit(255);
+    }
+    priorAbort = true;
 }
 
 int nic_setup(char *ifname)
@@ -169,7 +175,9 @@ int main()
             {
                 monitor.join();
                 ec_close();
-                // __lsan_do_leak_check();
+#ifdef WITH_ADDR_SANITIZE
+                __lsan_do_leak_check();
+#endif
                 return 1;
             }
 

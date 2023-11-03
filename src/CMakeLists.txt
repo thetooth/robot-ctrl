@@ -1,3 +1,5 @@
+option(ROBOTCTRL_ADDR_SANITIZE "Build with fsanitize=address" OFF)
+
 set(sources_list
     main.cpp
 )
@@ -42,8 +44,16 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             -Wno-gnu-anonymous-struct
             -Wno-gnu-zero-variadic-macro-arguments
             -Wno-nested-anon-types
-            # -fsanitize=address
         )
+        IF (ROBOTCTRL_ADDR_SANITIZE)
+            target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_ADDR_SANITIZE)
+            list(APPEND CUSTOM_COMPILE_OPTIONS
+                -fsanitize=address
+            )
+            set(CUSTOM_LINK_OPTIONS
+                -fsanitize=address
+            )
+        endif()
     endif()
     target_compile_options(
         ${PROJECT_NAME}
@@ -53,7 +63,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(
         ${PROJECT_NAME}
         PUBLIC
-            # -fsanitize=address
+            ${CUSTOM_LINK_OPTIONS}
     )
 endif()
 
