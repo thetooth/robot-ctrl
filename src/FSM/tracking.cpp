@@ -18,12 +18,17 @@ bool FSM::Robot::tracking()
         inSync = true;
     }
 
-    auto [alpha, beta, phi] = IKScara::inverseKinematics(dx, dy);
-    input.target_position[0] = alpha;
-    input.target_position[1] = beta;
+    auto [fx, fy, preOk] = IKScara::preprocessing(dx, dy);
+    auto [alpha, beta, phi, ikOk] = IKScara::inverseKinematics(fx, fy);
+    if (ikOk)
+    {
+        input.target_position[0] = alpha;
+        input.target_position[1] = beta;
+    }
+    KinematicAlarm = !preOk || !ikOk;
 
     auto res = otg.update(input, output);
-    if (res == ruckig::Finished)
+    if (res != ruckig::Finished)
     {
     }
     auto &p = output.new_position;

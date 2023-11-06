@@ -57,14 +57,14 @@ namespace FSM
         Delta::tx_t *A1InPDO, *A2InPDO;
         Delta::rx_t *A1OutPDO, *A2OutPDO;
         int A1ID, A2ID = 0;
-        bool A1GapAlarm, A2GapAlarm = false;
+        bool A1GapAlarm, A2GapAlarm, KinematicAlarm = false;
 
         Robot()
         {
             // Set dynamic limits
-            input.max_velocity = {1000.0, 1000.0};
-            input.max_acceleration = {3000.0, 3000.0};
-            input.max_jerk = {10000.0, 10000.0};
+            input.max_velocity = {600.0, 600.0};
+            input.max_acceleration = {50000.0, 50000.0};
+            input.max_jerk = {100000.0, 100000.0};
 
             // Set initial conditions
             input.current_position = {0.0, 0.0};

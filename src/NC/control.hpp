@@ -54,7 +54,7 @@ namespace NC
             assert(fsm != NULL);
 
             auto alarm = false;
-            if (fsm->A1GapAlarm || fsm->A2GapAlarm)
+            if (fsm->A1GapAlarm || fsm->A2GapAlarm || fsm->KinematicAlarm)
             {
                 alarm = true;
             }
@@ -65,8 +65,9 @@ namespace NC
                 diagStr.append(msg + "\n");
             }
 
-            auto [ax, ay] =
+            auto [dx, dy] =
                 IKScara::forwardKinematics(fsm->A1InPDO->actual_position / GEAR, fsm->A2InPDO->actual_position / GEAR);
+            auto vx = fsm->input.current_velocity[0], vy = fsm->input.current_velocity[1];
 
             // Status
             json stats = {
@@ -74,8 +75,10 @@ namespace NC
                 {"alarm", alarm},
                 {"state", fsm->to_string()},
                 {"diagMsg", diagStr},
-                {"dx", ax},
-                {"dy", ay},
+                {"dx", dx},
+                {"dy", dy},
+                {"vx", vx},
+                {"vy", vy},
                 {"dAlpha", fsm->A1InPDO->actual_position / GEAR},
                 {"dBeta", fsm->A2InPDO->actual_position / GEAR},
             };
