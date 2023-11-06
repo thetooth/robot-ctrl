@@ -1,75 +1,109 @@
 #include "scara.hpp"
 
-std::tuple<double, double> IKScara::forwardKinematics(double theta1, double theta2)
+std::tuple<double, double> IKScara::forwardKinematics(double alpha, double beta)
 {
-    double theta1F = theta1 * M_PI / 180; // degrees to radians
-    double theta2F = theta2 * M_PI / 180;
-    auto xP = L1 * cos(theta1F) + L2 * cos(theta1F + theta2F);
-    auto yP = L1 * sin(theta1F) + L2 * sin(theta1F + theta2F);
+    double alphaF = alpha * M_PI / 180; // degrees to radians
+    double betaF = beta * M_PI / 180;
+    auto xP = L1 * cos(alphaF) + L2 * cos(alphaF + betaF);
+    auto yP = L1 * sin(alphaF) + L2 * sin(alphaF + betaF);
 
     return {xP, yP};
 }
 
-std::tuple<double, double, double> IKScara::inverseKinematics(double x, double y)
+std::tuple<double, double, double, bool> IKScara::inverseKinematics(double x, double y)
 {
-    double theta1, theta2, phi = 0;
+    double alpha, beta, phi = 0;
 
-    theta2 = acos((pow(x, 2.0) + pow(y, 2.0) - pow(L1, 2.0) - pow(L2, 2.0)) / (2 * L1 * L2));
+    beta = acos((pow(x, 2.0) + pow(y, 2.0) - pow(L1, 2.0) - pow(L2, 2.0)) / (2 * L1 * L2));
     if (x < 0 & y < 0)
     {
-        theta2 = (-1) * theta2;
+        beta = (-1) * beta;
     }
 
-    theta1 = atan(x / y) - atan((L2 * sin(theta2)) / (L1 + L2 * cos(theta2)));
+    alpha = atan(x / y) - atan((L2 * sin(beta)) / (L1 + L2 * cos(beta)));
 
-    theta2 = (-1) * theta2 * 180 / M_PI;
-    theta1 = theta1 * 180 / M_PI;
+    beta = (-1) * beta * 180 / M_PI;
+    alpha = alpha * 180 / M_PI;
+
+    // Somethings not right...
+    if (isnan(alpha) || isnan(beta))
+    {
+        return {alpha, beta, phi, false};
+    }
+
+    const auto maxAngle = 150.0;
 
     // Angles adjustment depending in which quadrant the final tool coordinate x,y is
     if (x >= 0 && y >= 0)
     { // 1st quadrant
-        theta1 = 90 - theta1;
+        alpha = 90 - alpha;
     }
     if (x < 0 && y > 0)
     { // 2nd quadrant
-        theta1 = 90 - theta1;
+        alpha = 90 - alpha;
     }
     if (x < 0 && y < 0)
-    { // 3d quadrant
-        theta1 = 270 - theta1;
-        phi = 270 - theta1 - theta2;
+    { // 3rd quadrant
+        alpha = 270 - alpha;
+        beta = std::min(maxAngle, beta); // Prevent elbow under collision with A1 (radius)
+        phi = 270 - alpha - beta;
         phi = (-1) * phi;
     }
-    if (x > 0 && y < 0)
+    if (x >= 0 && y < 0)
     { // 4th quadrant
-        theta1 = -90 - theta1;
+        alpha = -90 - alpha;
     }
     if (x < 0 && y == 0)
     {
-        theta1 = 270 + theta1;
+        alpha = 90 - alpha;
     }
 
+    // Prevent elbow under collision with base during transition between 2nd and 3rd quadrant
+    alpha = std::min(270 - 30.0, alpha);
+    // Prevent elbow over collision with A1 (radius)
+    beta = std::max(-maxAngle, beta);
+
     // Calculate "phi" angle so gripper is parallel to the X axis
-    phi = 90 + theta1 + theta2;
+    phi = 90 + alpha + beta;
     phi = (-1) * phi;
 
     // Angle adjustment depending in which quadrant the final tool coordinate x,y is
     if (x < 0 && y < 0)
     { // 3d quadrant
-        phi = 270 - theta1 - theta2;
+        phi = 270 - alpha - beta;
     }
     if (abs(phi) > 165)
     {
         phi = 180 + phi;
     }
 
-    return {theta1, theta2, phi};
+    return {alpha, beta, phi, true};
+}
+
+std::tuple<double, double, bool> IKScara::preprocessing(double x, double y)
+{
+    const auto baseKeepOut = 100.0;
+    auto ok = true;
+
+    // Prevent placing the tool directly behind the base
+    if (x < 0 && y <= 0)
+    { // 3rd quadrant
+        x = std::min(x, -baseKeepOut);
+        ok = x < -baseKeepOut;
+    }
+    if (x >= 0 && y <= 0)
+    { // 4th quadrant
+        x = std::max(x, baseKeepOut);
+        ok = x > baseKeepOut;
+    }
+
+    return {x, y, ok};
 }
 
 double IKScara::gap(double target, double current, bool *alarm)
 {
     *alarm = false;
-    if (abs(target - current) > 15)
+    if (abs(target - current) > 100)
     {
         *alarm = true;
         spdlog::warn("GAP: {}", abs(target - current));

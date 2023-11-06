@@ -13,7 +13,8 @@ namespace IKScara
     const auto L2 = 200.0;
 
     std::tuple<double, double> forwardKinematics(double theta1, double theta2);
-    std::tuple<double, double, double> inverseKinematics(double x, double y);
+    std::tuple<double, double, double, bool> inverseKinematics(double x, double y);
+    std::tuple<double, double, bool> preprocessing(double x, double y);
     double gap(double target, double current, bool *alarm);
 } // namespace IKScara
 
