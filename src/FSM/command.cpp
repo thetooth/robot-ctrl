@@ -3,35 +3,39 @@
 void FSM::Robot::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
                            [[maybe_unused]] void *closur)
 {
-    auto payload = json::parse(natsMsg_GetData(msg));
-    if (!payload["command"].is_string())
+    try
     {
-        spdlog::warn("Invalid JSON received in command handler");
-        return;
-    }
-    auto command = payload["command"].template get<std::string>();
+        auto payload = json::parse(natsMsg_GetData(msg));
+        auto command = payload["command"].template get<std::string>();
 
-    if (command.compare("start") == 0 && estop)
-    {
-        run = true;
-    }
-    if (command.compare("goto") == 0 && estop)
-    {
-        if (!payload["position"].is_object())
+        if (command.compare("start") == 0 && estop)
         {
-            spdlog::warn("Invalid JSON received in goto handler");
-            return;
+            run = true;
         }
-        dx = payload["position"]["x"].template get<double>();
-        dy = payload["position"]["y"].template get<double>();
+        if (command.compare("goto") == 0 && estop)
+        {
+            auto x = payload["position"]["x"].template get<double>();
+            auto y = payload["position"]["y"].template get<double>();
+
+            // Commit only if parsing both values succeeds
+            dx = x, dy = y;
+        }
+        if (command.compare("reset") == 0)
+        {
+            needsHoming = true;
+        }
+        if (command.compare("stop") == 0)
+        {
+            run = false;
+        }
     }
-    if (command.compare("reset") == 0)
+    catch (const json::parse_error &e)
     {
-        needsHoming = true;
+        spdlog::error("commandCb parsing error: {}", e.what());
     }
-    if (command.compare("stop") == 0)
+    catch (const json::exception &e)
     {
-        run = false;
+        spdlog::error("commandCb exception: {}", e.what());
     }
     natsMsg_Destroy(msg);
 }
