@@ -25,7 +25,7 @@ bool FSM::Robot::tracking()
         input.target_position[0] = alpha;
         input.target_position[1] = beta;
     }
-    KinematicAlarm = !preOk || !ikOk;
+    KinematicAlarm = !preOk || !ikOk || alpha == 240 || beta == -150;
 
     auto res = otg.update(input, output);
     if (res != ruckig::Finished)
