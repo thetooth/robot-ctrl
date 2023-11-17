@@ -1,6 +1,6 @@
 #include "scara.hpp"
 
-std::tuple<double, double> IKScara::forwardKinematics(double alpha, double beta)
+std::tuple<double, double> IK::forwardKinematics(double alpha, double beta)
 {
     double alphaF = alpha * M_PI / 180; // degrees to radians
     double betaF = beta * M_PI / 180;
@@ -10,7 +10,7 @@ std::tuple<double, double> IKScara::forwardKinematics(double alpha, double beta)
     return {xP, yP};
 }
 
-std::tuple<double, double, double, bool> IKScara::inverseKinematics(double x, double y)
+std::tuple<double, double, double, bool> IK::inverseKinematics(double x, double y)
 {
     double alpha, beta, phi = 0;
 
@@ -80,7 +80,7 @@ std::tuple<double, double, double, bool> IKScara::inverseKinematics(double x, do
     return {alpha, beta, phi, true};
 }
 
-std::tuple<double, double, bool> IKScara::preprocessing(double x, double y)
+std::tuple<double, double, bool> IK::preprocessing(double x, double y)
 {
     const auto baseKeepOut = 100.0;
     auto ok = true;
@@ -100,15 +100,21 @@ std::tuple<double, double, bool> IKScara::preprocessing(double x, double y)
     return {x, y, ok};
 }
 
-double IKScara::gap(double target, double current, bool *alarm)
+void IK::to_json(json &j, const Pose &p)
 {
-    *alarm = false;
-    if (abs(target - current) > 100)
+    j = json{{"x", p.x}, {"y", p.x}, {"alpha", p.alpha}, {"beta", p.beta}};
+}
+void IK::from_json(const json &j, Pose &p)
+{
+    j.at("x").get_to(p.x);
+    j.at("y").get_to(p.y);
+    try
     {
-        *alarm = true;
-        spdlog::warn("GAP: {}", abs(target - current));
-        return current;
+        j.at("alpha").get_to(p.alpha);
+        j.at("beta").get_to(p.beta);
     }
-
-    return target;
+    catch (const json::exception &e)
+    {
+        spdlog::trace("Decoding IK::Pose: {}", e.what());
+    }
 }

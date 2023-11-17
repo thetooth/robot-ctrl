@@ -44,6 +44,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             -Wno-gnu-anonymous-struct
             -Wno-gnu-zero-variadic-macro-arguments
             -Wno-nested-anon-types
+            -Wno-division-by-zero
         )
         IF (ROBOTCTRL_ADDR_SANITIZE)
             target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_ADDR_SANITIZE)
@@ -66,7 +67,3 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${CUSTOM_LINK_OPTIONS}
     )
 endif()
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CAN)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/FSM)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/IK)

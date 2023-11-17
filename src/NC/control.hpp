@@ -5,13 +5,13 @@
 
 #include "nlohmann/json.hpp"
 
-#include "../FSM/fsm.hpp"
+#include "../Robot/fsm.hpp"
 
 namespace NC
 {
     using json = nlohmann::json;
 
-    FSM::Robot *fsmPtr = nullptr;
+    Robot::FSM *fsmPtr = nullptr;
     void commandCbWrapper(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
     {
         if (fsmPtr != nullptr)
@@ -19,7 +19,7 @@ namespace NC
             fsmPtr->commandCb(nc, sub, msg, closur);
         }
     }
-    void Monitor(FSM::Robot *fsm)
+    void Monitor(Robot::FSM *fsm)
     {
         // Communications
         natsConnection *nc = nullptr;
@@ -66,7 +66,7 @@ namespace NC
             }
 
             auto [dx, dy] =
-                IKScara::forwardKinematics(fsm->A1InPDO->actual_position / GEAR, fsm->A2InPDO->actual_position / GEAR);
+                IK::forwardKinematics(fsm->A1.InPDO->actual_position / GEAR, fsm->A2.InPDO->actual_position / GEAR);
             auto vx = fsm->input.current_velocity[0], vy = fsm->input.current_velocity[1];
 
             // Status
@@ -74,18 +74,19 @@ namespace NC
                 {"run", fsm->run},
                 {"alarm", alarm},
                 {"state", fsm->to_string()},
+                {"otg", fsm->status.otg},
                 {"diagMsg", diagStr},
                 {"dx", dx},
                 {"dy", dy},
                 {"vx", vx},
                 {"vy", vy},
-                {"dAlpha", fsm->A1InPDO->actual_position / GEAR},
-                {"dBeta", fsm->A2InPDO->actual_position / GEAR},
+                {"dAlpha", fsm->A1.InPDO->actual_position / GEAR},
+                {"dBeta", fsm->A2.InPDO->actual_position / GEAR},
             };
             auto payload = stats.dump();
             natsConnection_Publish(nc, "motion.status", payload.c_str(), payload.length());
 
-            if (!fsm->estop && fsm->next == FSM::Idle)
+            if (!fsm->estop && fsm->next == Robot::Idle)
             {
                 run = false;
             }

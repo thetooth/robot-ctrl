@@ -1,5 +1,5 @@
-#ifndef FSM_ROBOT_HPP
-#define FSM_ROBOT_HPP
+#ifndef ROBOT_FSM_HPP
+#define ROBOT_FSM_HPP
 
 #include <deque>
 
@@ -8,12 +8,12 @@
 #include "nlohmann/json.hpp"
 #include "ruckig/ruckig.hpp"
 
-#include "../CAN/CoEFSM.h"
-#include "../IK/scara.hpp"
 #include "../common.hpp"
-#include "../delta.hpp"
+#include "Drive/drive.hpp"
+#include "IK/scara.hpp"
+#include "status.hpp"
 
-namespace FSM
+namespace Robot
 {
     using namespace ruckig;
     using json = nlohmann::json;
@@ -29,9 +29,11 @@ namespace FSM
         Homing,
         Track,
         Tracking,
+        Path,
+        Pathing
     };
 
-    class Robot
+    class FSM
     {
       public:
         bool run;
@@ -43,23 +45,24 @@ namespace FSM
         State next = Idle;
         std::deque<std::string> diagMsgs = {};
 
-        CoEFSM A1;
-        CoEFSM A2;
+        Drive::Motor A1;
+        Drive::Motor A2;
 
         // Create instances: the Ruckig OTG as well as input and output parameters
-        Ruckig<2> otg{0.002}; // control cycle
+        Ruckig<2> otg{CYCLETIME / double(TS::NSEC_PER_SECOND)}; // control cycle
         InputParameter<2> input;
         OutputParameter<2> output;
 
-        double dx, dy = 150;
+        // Target
+        IK::Pose target = {.x = 0, .y = 150};
+        // Waypoints
+        std::vector<IK::Pose> waypoints;
 
-        // PDO memory
-        Delta::tx_t *A1InPDO, *A2InPDO;
-        Delta::rx_t *A1OutPDO, *A2OutPDO;
-        int A1ID, A2ID = 0;
+        Status status;
+
         bool A1GapAlarm, A2GapAlarm, KinematicAlarm = false;
 
-        Robot()
+        FSM()
         {
             // Set dynamic limits
             input.max_velocity = {600.0, 600.0};
@@ -73,22 +76,14 @@ namespace FSM
             input.target_position = {0.0, 0.0};
             input.target_velocity = {0.0, 0.0};
             input.synchronization = Synchronization::Phase;
-        }
-        void assignDrives()
-        {
-            A1OutPDO = (Delta::rx_t *)ec_slave[A1ID].outputs;
-            A1InPDO = (Delta::tx_t *)ec_slave[A1ID].inputs;
-            A2OutPDO = (Delta::rx_t *)ec_slave[A2ID].outputs;
-            A2InPDO = (Delta::tx_t *)ec_slave[A2ID].inputs;
 
-            A1.setCommand(CANOpenCommand::DISABLE);
-            A2.setCommand(CANOpenCommand::DISABLE);
+            // wp.generate();
         }
+
         void update();
         bool tracking();
-        void commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
-                       [[maybe_unused]] void *closur);
+        void commandCb(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur);
         std::string to_string() const;
     };
-} // namespace FSM
+} // namespace Robot
 #endif

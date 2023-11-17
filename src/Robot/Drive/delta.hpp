@@ -32,17 +32,20 @@ namespace Delta
 
     [[maybe_unused]] static int PO2SOconfig(uint16_t slave)
     {
-        // Set operational mode
-        Common::wkc += Common::SetModeOfOperation(slave, Common::None);
+        auto wkc = 0;
 
         // Set interpolation values
-        Common::wkc += Common::Write8(slave, 0x60C2, 1, 2);
-        Common::wkc += Common::Write8(slave, 0x60C2, 2, -3);
+        uint8_t interpolationPeriod = 2;
+        int8_t ratio = -3;
+        wkc += ec_SDOwrite(slave, 0x60C2, 1, FALSE, sizeof(interpolationPeriod), &interpolationPeriod, EC_TIMEOUTRXM);
+        wkc += ec_SDOwrite(slave, 0x60C2, 2, FALSE, sizeof(ratio), &ratio, EC_TIMEOUTRXM);
 
         // Set homing mode
-        Common::wkc += Common::Write8(slave, 0x6098, 0, 34);
-        Common::wkc += Common::Write32(slave, 0x6099, 1, 100);
-        Common::wkc += Common::Write32(slave, 0x6099, 2, 100);
+        uint8_t homingMode = 34; // Got to z index
+        uint32_t accel = 100;    // Speed
+        wkc += ec_SDOwrite(slave, 0x6098, 0, FALSE, sizeof(homingMode), &homingMode, EC_TIMEOUTRXM);
+        wkc += ec_SDOwrite(slave, 0x6099, 1, FALSE, sizeof(accel), &accel, EC_TIMEOUTRXM);
+        wkc += ec_SDOwrite(slave, 0x6099, 2, FALSE, sizeof(accel), &accel, EC_TIMEOUTRXM);
 
         const auto mapPDO = [&](const uint16_t PDO_map, const uint32_t *data, const uint8_t dataSize,
                                 const uint32_t SM_map) -> int {
@@ -71,10 +74,10 @@ namespace Delta
         };
 
         spdlog::debug("MAP PDO slave {}", slave);
-        Common::wkc += mapPDO(0x1A00, tx_mapping, tx_mapping_count, 0x1C13);
-        Common::wkc += mapPDO(0x1600, rx_mapping, rx_mapping_count, 0x1C12);
+        wkc += mapPDO(0x1A00, tx_mapping, tx_mapping_count, 0x1C13);
+        wkc += mapPDO(0x1600, rx_mapping, rx_mapping_count, 0x1C12);
 
-        return 0;
+        return wkc;
     }
 } // namespace Delta
 

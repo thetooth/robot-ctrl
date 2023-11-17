@@ -1,6 +1,6 @@
 #include "fsm.hpp"
 
-void FSM::Robot::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
+void Robot::FSM::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
                            [[maybe_unused]] void *closur)
 {
     try
@@ -14,11 +14,18 @@ void FSM::Robot::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]]
         }
         if (command.compare("goto") == 0 && estop)
         {
-            auto x = payload["position"]["x"].template get<double>();
-            auto y = payload["position"]["y"].template get<double>();
-
-            // Commit only if parsing both values succeeds
-            dx = x, dy = y;
+            target = payload["pose"].template get<IK::Pose>();
+        }
+        if (command.compare("waypoints") == 0 && estop)
+        {
+            if (payload["waypoints"].is_array())
+            {
+                waypoints.clear();
+                for (auto &&waypoint : payload["waypoints"])
+                {
+                    waypoints.push_back(waypoint.template get<IK::Pose>());
+                }
+            }
         }
         if (command.compare("reset") == 0)
         {

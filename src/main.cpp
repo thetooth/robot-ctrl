@@ -17,15 +17,16 @@
 #include "ruckig/ruckig.hpp"
 #include "spdlog/spdlog.h"
 
-#include "FSM/fsm.hpp"
 #include "NC/control.hpp"
+#include "Robot/fsm.hpp"
 
 // EtherCAT variables:
 char IOmap[4096];
 unsigned int usedmem;
+int A1ID, A2ID;
 
 // FSM
-auto fsm = FSM::Robot();
+auto fsm = Robot::FSM();
 
 auto priorAbort = false;
 void abort_handler([[maybe_unused]] int signum)
@@ -64,28 +65,28 @@ int nic_setup(char *ifname)
         auto &&slave = ec_slave[cnt];
         if (std::strcmp(slave.name, "ASDA-B3-E CoE Drive") == 0)
         {
-            if (fsm.A1ID == 0)
+            if (A1ID == 0)
             {
                 spdlog::debug("Assign {} {} as A1", slave.name, cnt);
-                fsm.A1ID = cnt;
+                A1ID = cnt;
             }
-            else if (fsm.A2ID == 0)
+            else if (A2ID == 0)
             {
                 spdlog::debug("Assign {} {} as A2", slave.name, cnt);
-                fsm.A2ID = cnt;
+                A2ID = cnt;
             }
         }
     }
 
-    if (fsm.A1ID == 0 || fsm.A2ID == 0)
+    if (A1ID == 0 || A2ID == 0)
     {
         spdlog::critical("One or more drives are missing");
         return 1;
     }
 
     // Drive startup params
-    ec_slave[fsm.A1ID].PO2SOconfig = Delta::PO2SOconfig;
-    ec_slave[fsm.A2ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[A1ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[A2ID].PO2SOconfig = Delta::PO2SOconfig;
 
     ec_statecheck(0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE * 4);
 
@@ -93,8 +94,8 @@ int nic_setup(char *ifname)
     ec_readstate();
 
     // DC Setup
-    ec_dcsync0(fsm.A1ID, true, SYNC0, 0);
-    ec_dcsync0(fsm.A2ID, true, SYNC0, 0);
+    ec_dcsync0(A1ID, true, SYNC0, 0);
+    ec_dcsync0(A2ID, true, SYNC0, 0);
 
     usedmem = ec_config_map(&IOmap);
     if (!(usedmem <= sizeof(IOmap)))
@@ -112,7 +113,7 @@ int nic_setup(char *ifname)
     ec_slave[0].state = EC_STATE_OPERATIONAL;
     // send one valid process data to make outputs in slaves happy
     ec_send_processdata();
-    Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
+    ec_receive_processdata(EC_TIMEOUTRET);
 
     ec_writestate(0);
     do
@@ -148,7 +149,8 @@ int main()
     }
 
     // Assign slave ids and setup PDO table
-    fsm.assignDrives();
+    fsm.A1 = Drive::Motor{A1ID, GEAR};
+    fsm.A2 = Drive::Motor{A2ID, GEAR};
 
     // Setup message bus
     auto monitor = std::thread(NC::Monitor, &fsm);
@@ -156,6 +158,11 @@ int main()
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
         spdlog::info("Operational state reached for all slaves.");
+
+        // Working counter
+        auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
+        auto wkc = 0;
+        spdlog::debug("Expected WKC {}", expectedWKC);
 
         // Timing
         struct timespec tick;
@@ -168,10 +175,15 @@ int main()
         while (true)
         {
             ec_send_processdata();
-            Common::wkc = ec_receive_processdata(EC_TIMEOUTRET);
+            wkc = ec_receive_processdata(EC_TIMEOUTRET);
+            if (wkc < expectedWKC)
+            {
+                spdlog::error("Working counter less than expected, perhaps a slave has died. {}<{}", wkc, expectedWKC);
+                fsm.estop = false;
+            }
 
             fsm.update();
-            if (!fsm.estop && fsm.next == FSM::Idle)
+            if (!fsm.estop && fsm.next == Robot::Idle)
             {
                 monitor.join();
                 ec_close();

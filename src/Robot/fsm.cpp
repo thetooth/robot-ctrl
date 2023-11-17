@@ -1,19 +1,9 @@
 #include "fsm.hpp"
 
-void FSM::Robot::update()
+void Robot::FSM::update()
 {
-    //! @brief Update CoE state machine
-    //!
-    //! NOTE: Trajectory must be computed and sent to the drive PRIOR to entering
-    //! CSP, not doing this results in PDO target position being zero at activation
-    //! and drive attempting to leave low earth orbit. For safety the target is set
-    //! to the current position every cycle.
-    A1.update(A1InPDO->status_word);
-    A1OutPDO->control_word = A1.getControlWord();
-    A1OutPDO->target_position = A1InPDO->actual_position;
-    A2.update(A2InPDO->status_word);
-    A2OutPDO->control_word = A2.getControlWord();
-    A2OutPDO->target_position = A2InPDO->actual_position;
+    A1.update();
+    A2.update();
 
     switch (next)
     {
@@ -33,8 +23,8 @@ void FSM::Robot::update()
         }
         break;
     case Halt:
-        Common::wkc += Common::SetModeOfOperation(A1ID, Common::None);
-        Common::wkc += Common::SetModeOfOperation(A2ID, Common::None);
+        A1.setModeOfOperation(CANOpen::control::mode::NO_MODE);
+        A2.setModeOfOperation(CANOpen::control::mode::NO_MODE);
         A1.setCommand(CANOpenCommand::DISABLE);
         A2.setCommand(CANOpenCommand::DISABLE);
         next = Halting;
@@ -70,10 +60,10 @@ void FSM::Robot::update()
         }
         break;
     case Home:
-        Common::wkc += Common::SetModeOfOperation(A1ID, Common::Homing);
-        Common::wkc += Common::SetModeOfOperation(A2ID, Common::Homing);
-        Common::wkc += Common::SetHomingOffset(A1ID, -235 * GEAR);
-        Common::wkc += Common::SetHomingOffset(A2ID, 145 * GEAR);
+        A1.setModeOfOperation(CANOpen::control::mode::HOME);
+        A2.setModeOfOperation(CANOpen::control::mode::HOME);
+        A1.setHomingOffset(-235 * GEAR);
+        A2.setHomingOffset(145 * GEAR);
         A1.setCommand(CANOpenCommand::HOME);
         A2.setCommand(CANOpenCommand::HOME);
         next = Homing;
@@ -103,8 +93,8 @@ void FSM::Robot::update()
         break;
     }
     case Track:
-        Common::wkc += Common::SetModeOfOperation(A1ID, Common::CSP);
-        Common::wkc += Common::SetModeOfOperation(A2ID, Common::CSP);
+        A1.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
+        A2.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
         next = Tracking;
         break;
     case Tracking: {
@@ -118,10 +108,21 @@ void FSM::Robot::update()
         }
         break;
     }
+    case Path:
+        A1.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
+        A2.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
+        next = Pathing;
+        break;
+    case Pathing:
+        if (!estop || !run)
+        {
+            diagMsgs.push_back("Pathing interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
+            next = Halt;
+        }
     }
 }
 
-std::string FSM::Robot::to_string() const
+std::string Robot::FSM::to_string() const
 {
     switch (next)
     {

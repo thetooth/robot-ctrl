@@ -1,6 +1,6 @@
-#include "CoEFSM.h"
+#include "CoE.hpp"
 
-void CoEFSM::update(uint16_t status_word)
+void CANOpen::FSM::update(uint16_t status_word)
 {
     status_word_ = status_word;
 

@@ -9,46 +9,6 @@
 #define SYNC0 2e6
 #define CYCLETIME SYNC0
 
-namespace Common
-{
-    static int wkc = 0;
-    [[maybe_unused]] static int Write8(uint16_t slave, uint16_t index, uint8_t subindex, uint8_t value)
-    {
-        int wkc;
-        wkc = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        return wkc;
-    }
-    [[maybe_unused]] static int Write16(uint16_t slave, uint16_t index, uint8_t subindex, uint16_t value)
-    {
-        int wkc;
-        wkc = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        return wkc;
-    }
-    [[maybe_unused]] static int Write32(uint16_t slave, uint16_t index, uint8_t subindex, uint32_t value)
-    {
-        int wkc;
-        wkc = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        return wkc;
-    }
-
-    enum ModesOfOperation : uint8_t
-    {
-        None,
-        Homing = 0x6,
-        CSP = 0x8
-    };
-    [[maybe_unused]] static int SetModeOfOperation(uint16_t slave, ModesOfOperation value)
-    {
-        return Write8(slave, 0x6060, 0, value);
-    }
-    [[maybe_unused]] static int SetHomingOffset(uint16_t slave, int32_t value)
-    {
-        int wkc;
-        wkc = ec_SDOwrite(slave, 0x607C, 0, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        return wkc;
-    }
-} // namespace Common
-
 namespace TS
 {
     static const int NSEC_PER_SECOND = 1e+9;
