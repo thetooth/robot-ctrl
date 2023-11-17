@@ -6,7 +6,7 @@
 #include "ethercat.h"
 
 #define GEAR (46603.0 * 10.0 * 3.44) // Units per degree * gearbox * pulley
-#define SYNC0 2e6
+#define SYNC0 1e6
 #define CYCLETIME SYNC0
 
 namespace TS
@@ -18,7 +18,7 @@ namespace TS
     {
         // static int64_t integral;
         int64_t delta;
-        /* set linux sync point 50us later than DC sync, just as example */
+        /* set linux sync point 500us later than DC sync, just as example */
         delta = (reftime - 500000) % cycletime;
         if (delta > (cycletime / 2))
         {
