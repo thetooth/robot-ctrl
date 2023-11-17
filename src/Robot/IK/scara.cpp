@@ -108,13 +108,7 @@ void IK::from_json(const json &j, Pose &p)
 {
     j.at("x").get_to(p.x);
     j.at("y").get_to(p.y);
-    try
-    {
-        j.at("alpha").get_to(p.alpha);
-        j.at("beta").get_to(p.beta);
-    }
-    catch (const json::exception &e)
-    {
-        spdlog::trace("Decoding IK::Pose: {}", e.what());
-    }
+
+    p.alpha = j.value("alpha", 0.0);
+    p.beta = j.value("beta", 0.0);
 }
