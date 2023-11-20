@@ -30,14 +30,14 @@ bool Robot::FSM::tracking()
     status.otg.result = otg.update(input, output);
     auto &p = output.new_position;
 
-    A1GapAlarm = A1.move(p[0]);
-    A2GapAlarm = A2.move(p[1]);
+    A1Fault = A1.move(p[0]);
+    A2Fault = A2.move(p[1]);
 
-    if (A1GapAlarm || A2GapAlarm)
+    if (A1Fault || A2Fault)
     {
-        diagMsgs.push_back("Gap between current and target position exceeds dynamic capabilities");
-        diagMsgs.push_back("A1 target " + std::to_string(p[0]) + ", actual " + std::to_string(A1.getPosition()));
-        diagMsgs.push_back("A2 target " + std::to_string(p[1]) + ", actual " + std::to_string(A2.getPosition()));
+        diagMsgs.push_back("Drive fault occurred, stopping");
+        diagMsgs.push_back("A1 " + A1.lastFault);
+        diagMsgs.push_back("A2 " + A2.lastFault);
         run = false;
         return true;
     }

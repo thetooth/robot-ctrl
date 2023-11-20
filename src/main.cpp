@@ -149,8 +149,8 @@ int main()
     }
 
     // Assign slave ids and setup PDO table
-    fsm.A1 = Drive::Motor{A1ID, GEAR};
-    fsm.A2 = Drive::Motor{A2ID, GEAR};
+    fsm.A1 = Drive::Motor{A1ID, GEAR, -65, 245};
+    fsm.A2 = Drive::Motor{A2ID, GEAR, -155, 155};
 
     // Setup message bus
     auto monitor = std::thread(NC::Monitor, &fsm);
