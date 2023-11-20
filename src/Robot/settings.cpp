@@ -20,12 +20,12 @@ void Robot::FSM::receiveSettings([[maybe_unused]] natsConnection *nc, [[maybe_un
     auto settings = payload.template get<Robot::OTGSettings>();
 
     // Do not apply if we're moving to avoid helicoptering
-    // if (!run)
-    // {
-    input.max_velocity = {settings.max_velocity, settings.max_velocity};
-    input.max_acceleration = {settings.max_acceleration, settings.max_acceleration};
-    input.max_jerk = {settings.max_jerk, settings.max_jerk};
-    // }
+    if (!run)
+    {
+        input.max_velocity = {settings.max_velocity, settings.max_velocity};
+        input.max_acceleration = {settings.max_acceleration, settings.max_acceleration};
+        input.max_jerk = {settings.max_jerk, settings.max_jerk};
+    }
 
     natsMsg_Destroy(msg);
 }
