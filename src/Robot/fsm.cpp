@@ -36,6 +36,8 @@ void Robot::FSM::update()
         }
         break;
     case Start:
+        A1.faultReset();
+        A2.faultReset();
         A1.setCommand(CANOpenCommand::ENABLE);
         A2.setCommand(CANOpenCommand::ENABLE);
         next = Starting;
