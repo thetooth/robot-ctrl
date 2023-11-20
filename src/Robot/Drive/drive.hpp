@@ -9,12 +9,15 @@
 
 namespace Drive
 {
+    namespace fmt = spdlog::fmt_lib;
     class Motor : public CANOpen::FSM
     {
       public:
         int slaveID;
         double gearRatio;
+        double minPosition, maxPosition;
         bool fault;
+        std::string lastFault = "I'm OK";
 
         Delta::tx_t *InPDO;
         Delta::rx_t *OutPDO;
@@ -23,7 +26,8 @@ namespace Drive
         {
             fault = true;
         }
-        Motor(int id, double ratio) : slaveID(id), gearRatio(ratio), fault(false)
+        Motor(int id, double ratio, double minimum, double maximum)
+            : slaveID(id), gearRatio(ratio), minPosition(minimum), maxPosition(maximum), fault(false)
         {
             InPDO = (Delta::tx_t *)ec_slave[slaveID].inputs;
             OutPDO = (Delta::rx_t *)ec_slave[slaveID].outputs;
@@ -34,6 +38,7 @@ namespace Drive
         double getVelocity();
         int setModeOfOperation(CANOpen::control::mode value);
         int setHomingOffset(int32_t value);
+        int faultReset();
     };
 } // namespace Drive
 
