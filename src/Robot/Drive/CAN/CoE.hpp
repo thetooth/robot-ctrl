@@ -129,6 +129,33 @@ namespace CANOpen
         }
         std::string to_string() const
         {
+            switch (motor_state_)
+            {
+            case CANOpenState::OFF:
+                return "OFF";
+                break;
+            case CANOpenState::SAFE_RESET:
+                return "SAFE_RESET";
+                break;
+            case CANOpenState::PREPARE_TO_SWITCH_ON:
+                return "PREPARE_TO_SWITCH_ON";
+                break;
+            case CANOpenState::SWITCH_ON:
+                return "SWITCH_ON";
+                break;
+            case CANOpenState::ON:
+                return "ON";
+                break;
+            case CANOpenState::HOMING_COMPLETE:
+                return "HOMING_COMPLETE";
+                break;
+            case CANOpenState::FAULT:
+                return "FAULT";
+                break;
+
+            default:
+                break;
+            }
             return "";
         }
 
