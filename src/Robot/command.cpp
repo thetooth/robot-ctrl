@@ -1,7 +1,7 @@
 #include "fsm.hpp"
 
-void Robot::FSM::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
-                           [[maybe_unused]] void *closur)
+void Robot::FSM::receiveCommand([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub,
+                                natsMsg *msg, [[maybe_unused]] void *closure)
 {
     try
     {
@@ -30,6 +30,10 @@ void Robot::FSM::commandCb([[maybe_unused]] natsConnection *nc, [[maybe_unused]]
         if (command.compare("reset") == 0)
         {
             needsHoming = true;
+            if (!run)
+            {
+                next = Robot::Idle;
+            }
         }
         if (command.compare("stop") == 0)
         {

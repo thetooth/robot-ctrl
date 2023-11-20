@@ -11,6 +11,7 @@
 #include "../common.hpp"
 #include "Drive/drive.hpp"
 #include "IK/scara.hpp"
+#include "settings.hpp"
 #include "status.hpp"
 
 namespace Robot
@@ -60,7 +61,7 @@ namespace Robot
 
         Status status;
 
-        bool A1GapAlarm, A2GapAlarm, KinematicAlarm = false;
+        bool A1Fault, A2Fault, KinematicAlarm = false;
 
         FSM()
         {
@@ -82,7 +83,8 @@ namespace Robot
 
         void update();
         bool tracking();
-        void commandCb(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur);
+        void receiveCommand(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
+        void receiveSettings(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
         std::string to_string() const;
     };
 } // namespace Robot

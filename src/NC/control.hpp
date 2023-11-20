@@ -16,7 +16,14 @@ namespace NC
     {
         if (fsmPtr != nullptr)
         {
-            fsmPtr->commandCb(nc, sub, msg, closur);
+            fsmPtr->receiveCommand(nc, sub, msg, closur);
+        }
+    }
+    void settingsCbWrapper(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
+    {
+        if (fsmPtr != nullptr)
+        {
+            fsmPtr->receiveSettings(nc, sub, msg, closur);
         }
     }
     void Monitor(Robot::FSM *fsm)
@@ -39,6 +46,12 @@ namespace NC
             spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
             return;
         }
+        ncStatus = natsConnection_Subscribe(&ctrlSub, nc, "motion.settings", settingsCbWrapper, NULL);
+        if (ncStatus != NATS_OK)
+        {
+            spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
+            return;
+        }
 
         // Timing
         struct timespec tick;
@@ -54,7 +67,7 @@ namespace NC
             assert(fsm != NULL);
 
             auto alarm = false;
-            if (fsm->A1GapAlarm || fsm->A2GapAlarm || fsm->KinematicAlarm)
+            if (fsm->A1Fault || fsm->A2Fault || fsm->KinematicAlarm)
             {
                 alarm = true;
             }
