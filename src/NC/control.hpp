@@ -31,6 +31,7 @@ namespace NC
         // Communications
         natsConnection *nc = nullptr;
         natsSubscription *ctrlSub = nullptr;
+        natsSubscription *settingsSub = nullptr;
 
         fsmPtr = fsm;
 
@@ -46,7 +47,7 @@ namespace NC
             spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
             return;
         }
-        ncStatus = natsConnection_Subscribe(&ctrlSub, nc, "motion.settings", settingsCbWrapper, NULL);
+        ncStatus = natsConnection_Subscribe(&settingsSub, nc, "motion.settings", settingsCbWrapper, NULL);
         if (ncStatus != NATS_OK)
         {
             spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
@@ -66,38 +67,7 @@ namespace NC
         {
             assert(fsm != NULL);
 
-            auto alarm = false;
-            if (fsm->A1Fault || fsm->A2Fault || fsm->KinematicAlarm)
-            {
-                alarm = true;
-            }
-
-            auto diagStr = std::string("");
-            for (auto msg : fsm->diagMsgs)
-            {
-                diagStr.append(msg + "\n");
-            }
-
-            auto [dx, dy] =
-                IK::forwardKinematics(fsm->A1.InPDO->actual_position / GEAR, fsm->A2.InPDO->actual_position / GEAR);
-            auto vx = fsm->input.current_velocity[0], vy = fsm->input.current_velocity[1];
-
-            // Status
-            json stats = {
-                {"run", fsm->run},
-                {"alarm", alarm},
-                {"state", fsm->to_string()},
-                {"otg", fsm->status.otg},
-                {"diagMsg", diagStr},
-                {"dx", dx},
-                {"dy", dy},
-                {"vx", vx},
-                {"vy", vy},
-                {"dAlpha", fsm->A1.InPDO->actual_position / GEAR},
-                {"dBeta", fsm->A2.InPDO->actual_position / GEAR},
-            };
-            auto payload = stats.dump();
-            natsConnection_Publish(nc, "motion.status", payload.c_str(), payload.length());
+            fsm->broadcastStatus(nc);
 
             if (!fsm->estop && fsm->next == Robot::Idle)
             {
@@ -114,7 +84,9 @@ namespace NC
             TS::Increment(tick, period);
         }
         natsSubscription_Unsubscribe(ctrlSub);
+        natsSubscription_Unsubscribe(settingsSub);
         natsSubscription_Destroy(ctrlSub);
+        natsSubscription_Destroy(settingsSub);
 
         natsConnection_FlushTimeout(nc, 1000);
         natsConnection_Close(nc);

@@ -64,8 +64,8 @@ void Robot::FSM::update()
     case Home:
         A1.setModeOfOperation(CANOpen::control::mode::HOME);
         A2.setModeOfOperation(CANOpen::control::mode::HOME);
-        A1.setHomingOffset(-235 * GEAR);
-        A2.setHomingOffset(145 * GEAR);
+        A1.setHomingOffset(-235);
+        A2.setHomingOffset(145);
         A1.setCommand(CANOpenCommand::HOME);
         A2.setCommand(CANOpenCommand::HOME);
         next = Homing;

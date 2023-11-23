@@ -67,8 +67,8 @@ namespace Robot
         {
             // Set dynamic limits
             input.max_velocity = {600.0, 600.0};
-            input.max_acceleration = {50000.0, 50000.0};
-            input.max_jerk = {100000.0, 100000.0};
+            input.max_acceleration = {1000.0, 1000.0};
+            input.max_jerk = {1000.0, 1000.0};
 
             // Set initial conditions
             input.current_position = {0.0, 0.0};
@@ -85,6 +85,7 @@ namespace Robot
         bool tracking();
         void receiveCommand(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
         void receiveSettings(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
+        void broadcastStatus(natsConnection *nc = nullptr);
         std::string to_string() const;
     };
 } // namespace Robot

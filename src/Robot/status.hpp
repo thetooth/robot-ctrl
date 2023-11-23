@@ -17,7 +17,12 @@ namespace Robot
 
     struct Status
     {
+        bool run;
+        bool alarm;
+        std::string state;
         OTGStatus otg;
+        std::string diagMsg;
+        IK::Pose pose;
     };
     void to_json(json &j, const Status &p);
 } // namespace Robot

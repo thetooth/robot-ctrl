@@ -7,5 +7,53 @@ void Robot::to_json(json &j, const OTGStatus &p)
 
 void Robot::to_json(json &j, const Status &p)
 {
-    j = json{{"otg", p.otg}};
+    j = json{
+        {"run", p.run}, {"alarm", p.alarm},     {"state", p.state},
+        {"otg", p.otg}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
+    };
+}
+
+void Robot::FSM::broadcastStatus(natsConnection *nc)
+{
+    if (nc == nullptr)
+    {
+        spdlog::critical("broadcastStatus called with nullptr");
+        return;
+    }
+
+    auto alarm = false;
+    if (A1Fault || A2Fault || KinematicAlarm)
+    {
+        alarm = true;
+    }
+
+    auto diagStr = std::string("");
+    for (auto msg : diagMsgs)
+    {
+        diagStr.append(msg + "\n");
+    }
+
+    auto [dx, dy] = IK::forwardKinematics(A1.getPosition(), A2.getPosition());
+
+    status.run = run;
+    status.alarm = alarm;
+    status.state = to_string();
+    status.diagMsg = diagStr;
+    status.pose = IK::Pose{
+        .x = dx,
+        .y = dy,
+        .alpha = A1.getPosition(),
+        .beta = A2.getPosition(),
+        .alphaVelocity = A1.getVelocity(),
+        .betaVelocity = A2.getVelocity(),
+    };
+
+    json j = status;
+    auto payload = j.dump();
+
+    auto ncStatus = natsConnection_Publish(nc, "motion.status", payload.c_str(), payload.length());
+    if (ncStatus != NATS_OK)
+    {
+        spdlog::error("Failed to broadcast status: {}", natsStatus_GetText(ncStatus));
+    }
 }
