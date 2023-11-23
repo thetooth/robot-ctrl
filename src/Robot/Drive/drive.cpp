@@ -25,7 +25,7 @@ bool Drive::Motor::move(double target)
     {
         return fault;
     }
-    auto current = InPDO->actual_position / gearRatio;
+    auto current = InPDO->actual_position / positionRatio;
     if (std::abs(target - current) > 100)
     {
         fault = true;
@@ -41,18 +41,18 @@ bool Drive::Motor::move(double target)
         spdlog::error(lastFault);
         return fault;
     }
-    OutPDO->target_position = target * gearRatio;
+    OutPDO->target_position = target * positionRatio;
     return fault;
 }
 
 double Drive::Motor::getPosition()
 {
-    return InPDO->actual_position / gearRatio;
+    return InPDO->actual_position / positionRatio;
 }
 
 double Drive::Motor::getVelocity()
 {
-    return InPDO->actual_velocity / (10.0 * 3.44);
+    return InPDO->actual_velocity / velocityRatio;
 }
 
 int Drive::Motor::setModeOfOperation(CANOpen::control::mode value)
@@ -62,7 +62,8 @@ int Drive::Motor::setModeOfOperation(CANOpen::control::mode value)
 
 int Drive::Motor::setHomingOffset(int32_t value)
 {
-    return ec_SDOwrite(slaveID, 0x607C, 0, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
+    auto final = int32_t(value * positionRatio);
+    return ec_SDOwrite(slaveID, 0x607C, 0, FALSE, sizeof(final), &final, EC_TIMEOUTRXM);
 }
 
 int Drive::Motor::faultReset()

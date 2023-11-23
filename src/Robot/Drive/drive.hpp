@@ -14,7 +14,7 @@ namespace Drive
     {
       public:
         int slaveID;
-        double gearRatio;
+        double positionRatio, velocityRatio;
         double minPosition, maxPosition;
         bool fault;
         std::string lastFault = "I'm OK";
@@ -26,8 +26,9 @@ namespace Drive
         {
             fault = true;
         }
-        Motor(int id, double ratio, double minimum, double maximum)
-            : slaveID(id), gearRatio(ratio), minPosition(minimum), maxPosition(maximum), fault(false)
+        Motor(int id, double positionRatio, double velocityRatio, double minimum, double maximum)
+            : slaveID(id), positionRatio(positionRatio), velocityRatio(velocityRatio), minPosition(minimum),
+              maxPosition(maximum), fault(false)
         {
             InPDO = (Delta::tx_t *)ec_slave[slaveID].inputs;
             OutPDO = (Delta::rx_t *)ec_slave[slaveID].outputs;
