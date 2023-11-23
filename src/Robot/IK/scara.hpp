@@ -22,6 +22,7 @@ namespace IK
     {
         double x, y;
         double alpha, beta;
+        double alphaVelocity, betaVelocity;
     };
     void to_json(json &j, const Pose &p);
     void from_json(const json &j, Pose &p);

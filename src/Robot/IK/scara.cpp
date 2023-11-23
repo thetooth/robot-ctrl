@@ -102,7 +102,14 @@ std::tuple<double, double, bool> IK::preprocessing(double x, double y)
 
 void IK::to_json(json &j, const Pose &p)
 {
-    j = json{{"x", p.x}, {"y", p.x}, {"alpha", p.alpha}, {"beta", p.beta}};
+    j = json{
+        {"x", p.x},
+        {"y", p.y},
+        {"alpha", p.alpha},
+        {"beta", p.beta},
+        {"alphaVelocity", p.alphaVelocity},
+        {"betaVelocity", p.betaVelocity},
+    };
 }
 void IK::from_json(const json &j, Pose &p)
 {
