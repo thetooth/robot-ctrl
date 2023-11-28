@@ -17,15 +17,35 @@ void Robot::FSM::receiveSettings([[maybe_unused]] natsConnection *nc, [[maybe_un
                                  natsMsg *msg, [[maybe_unused]] void *closure)
 {
     auto payload = json::parse(natsMsg_GetData(msg));
-    auto settings = payload.template get<Robot::OTGSettings>();
+    natsMsg_Destroy(msg);
+
+    if (!payload.is_array())
+    {
+        spdlog::warn("Got something that isn't an array in receiveSettings");
+        return;
+    }
+
+    std::vector<Robot::OTGSettings> settings;
+    for (auto &&axis : payload)
+    {
+        settings.push_back(axis.template get<Robot::OTGSettings>());
+    }
 
     // Do not apply if we're moving to avoid helicoptering
     if (!run)
     {
-        input.max_velocity = {settings.max_velocity, settings.max_velocity};
-        input.max_acceleration = {settings.max_acceleration, settings.max_acceleration};
-        input.max_jerk = {settings.max_jerk, settings.max_jerk};
+        if (settings.size() < input.degrees_of_freedom)
+        {
+            spdlog::warn(
+                "Not enough objects in receiveSettings payload for number of configured DoF which is {} and I have {}",
+                input.degrees_of_freedom, settings.size());
+            return;
+        }
+        for (size_t i = 0; i <= input.degrees_of_freedom - 1; i++)
+        {
+            input.max_velocity[i] = settings.at(i).max_velocity;
+            input.max_acceleration[i] = settings.at(i).max_acceleration;
+            input.max_jerk[i] = settings.at(i).max_jerk;
+        }
     }
-
-    natsMsg_Destroy(msg);
 }
