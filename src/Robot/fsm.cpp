@@ -2,8 +2,7 @@
 
 void Robot::FSM::update()
 {
-    A1.update();
-    A2.update();
+    Arm.update();
 
     switch (next)
     {
@@ -23,10 +22,9 @@ void Robot::FSM::update()
         }
         break;
     case Halt:
-        A1.setModeOfOperation(CANOpen::control::mode::NO_MODE);
-        A2.setModeOfOperation(CANOpen::control::mode::NO_MODE);
-        A1.setCommand(CANOpenCommand::DISABLE);
-        A2.setCommand(CANOpenCommand::DISABLE);
+        Arm.setModeOfOperation(CANOpen::control::mode::NO_MODE);
+        Arm.setCommand(CANOpenCommand::DISABLE);
+
         next = Halting;
         break;
     case Halting:
@@ -36,10 +34,9 @@ void Robot::FSM::update()
         }
         break;
     case Start:
-        A1.faultReset();
-        A2.faultReset();
-        A1.setCommand(CANOpenCommand::ENABLE);
-        A2.setCommand(CANOpenCommand::ENABLE);
+        Arm.faultReset();
+        Arm.setCommand(CANOpenCommand::ENABLE);
+
         next = Starting;
         break;
     case Starting:
@@ -62,12 +59,11 @@ void Robot::FSM::update()
         }
         break;
     case Home:
-        A1.setModeOfOperation(CANOpen::control::mode::HOME);
-        A2.setModeOfOperation(CANOpen::control::mode::HOME);
+        Arm.setModeOfOperation(CANOpen::control::mode::HOME);
         A1.setHomingOffset(-235);
         A2.setHomingOffset(145);
-        A1.setCommand(CANOpenCommand::HOME);
-        A2.setCommand(CANOpenCommand::HOME);
+        Arm.setCommand(CANOpenCommand::HOME);
+
         next = Homing;
     case Homing: {
         auto homingResult =
@@ -95,8 +91,7 @@ void Robot::FSM::update()
         break;
     }
     case Track:
-        A1.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
-        A2.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
+        Arm.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
         next = Tracking;
         break;
     case Tracking: {
@@ -111,8 +106,7 @@ void Robot::FSM::update()
         break;
     }
     case Path:
-        A1.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
-        A2.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
+        Arm.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
         next = Pathing;
         break;
     case Pathing:
