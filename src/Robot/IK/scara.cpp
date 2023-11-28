@@ -105,17 +105,25 @@ void IK::to_json(json &j, const Pose &p)
     j = json{
         {"x", p.x},
         {"y", p.y},
+        {"z", p.z},
+        {"r", p.r},
         {"alpha", p.alpha},
         {"beta", p.beta},
+        {"phi", p.phi},
         {"alphaVelocity", p.alphaVelocity},
         {"betaVelocity", p.betaVelocity},
+        {"phiVelocity", p.phiVelocity},
+        {"zVelocity", p.zVelocity},
     };
 }
 void IK::from_json(const json &j, Pose &p)
 {
     j.at("x").get_to(p.x);
     j.at("y").get_to(p.y);
+    p.z = j.value("z", 0.0);
+    p.r = j.value("r", 0.0);
 
     p.alpha = j.value("alpha", 0.0);
     p.beta = j.value("beta", 0.0);
+    p.phi = j.value("phi", 0.0);
 }

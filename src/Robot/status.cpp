@@ -42,10 +42,14 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
     status.pose = IK::Pose{
         .x = dx,
         .y = dy,
+        .z = input.current_position[3],
+        .r = target.r,
         .alpha = A1.getPosition(),
         .beta = A2.getPosition(),
+        .phi = input.current_position[2],
         .alphaVelocity = A1.getVelocity(),
         .betaVelocity = A2.getVelocity(),
+        .phiVelocity = input.current_velocity[2],
     };
 
     json j = status;

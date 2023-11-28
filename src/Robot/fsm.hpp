@@ -9,7 +9,7 @@
 #include "ruckig/ruckig.hpp"
 
 #include "../common.hpp"
-#include "Drive/drive.hpp"
+#include "Drive/group.hpp"
 #include "IK/scara.hpp"
 #include "settings.hpp"
 #include "status.hpp"
@@ -48,11 +48,12 @@ namespace Robot
 
         Drive::Motor A1;
         Drive::Motor A2;
+        Drive::Group Arm;
 
         // Create instances: the Ruckig OTG as well as input and output parameters
-        Ruckig<2> otg{CYCLETIME / double(TS::NSEC_PER_SECOND)}; // control cycle
-        InputParameter<2> input;
-        OutputParameter<2> output;
+        Ruckig<4> otg{CYCLETIME / double(TS::NSEC_PER_SECOND)}; // control cycle
+        InputParameter<4> input;
+        OutputParameter<4> output;
 
         // Target
         IK::Pose target = {.x = 0, .y = 150};
@@ -66,19 +67,17 @@ namespace Robot
         FSM()
         {
             // Set dynamic limits
-            input.max_velocity = {600.0, 600.0};
-            input.max_acceleration = {1000.0, 1000.0};
-            input.max_jerk = {1000.0, 1000.0};
+            input.max_velocity = {600.0, 600.0, 1000.0, 1000.0};
+            input.max_acceleration = {2500.0, 2500.0, 10000.0, 10000.0};
+            input.max_jerk = {10000.0, 10000.0, 10000.0, 10000.0};
 
             // Set initial conditions
-            input.current_position = {0.0, 0.0};
-            input.current_velocity = {0.0, 0.0};
-            input.current_acceleration = {0.0, 0.0};
-            input.target_position = {0.0, 0.0};
-            input.target_velocity = {0.0, 0.0};
-            input.synchronization = Synchronization::Phase;
-
-            // wp.generate();
+            input.current_position = {0.0, 0.0, 0.0, 0.0};
+            input.current_velocity = {0.0, 0.0, 0.0, 0.0};
+            input.current_acceleration = {0.0, 0.0, 0.0, 0.0};
+            input.target_position = {0.0, 0.0, 0.0, 0.0};
+            input.target_velocity = {0.0, 0.0, 0.0, 0.0};
+            input.synchronization = Synchronization::TimeIfNecessary;
         }
 
         void update();

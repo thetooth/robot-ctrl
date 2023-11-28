@@ -20,9 +20,10 @@ namespace IK
     using json = nlohmann::json;
     struct Pose
     {
-        double x, y;
-        double alpha, beta;
+        double x, y, z, r;
+        double alpha, beta, phi;
         double alphaVelocity, betaVelocity;
+        double phiVelocity, zVelocity;
     };
     void to_json(json &j, const Pose &p);
     void from_json(const json &j, Pose &p);

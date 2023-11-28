@@ -9,7 +9,10 @@ bool Robot::FSM::tracking()
             A1.getPosition(),
             A2.getPosition(),
         };
-        input.current_velocity = {0.0, 0.0};
+        input.current_velocity = {
+            A1.getVelocity(),
+            A2.getVelocity(),
+        };
         input.current_acceleration = {0.0, 0.0};
         otg.reset();
 
@@ -24,6 +27,8 @@ bool Robot::FSM::tracking()
     {
         input.target_position[0] = alpha;
         input.target_position[1] = beta;
+        input.target_position[2] = phi + target.r;
+        input.target_position[3] = target.z;
     }
     KinematicAlarm = !preOk || !ikOk || alpha == 240 || beta == -150;
 
