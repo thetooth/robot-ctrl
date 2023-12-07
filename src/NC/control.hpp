@@ -56,7 +56,7 @@ namespace NC
 
         // Timing
         struct timespec tick;
-        int64_t period = int64_t(16.666666666667e+6 / 2.0);
+        int64_t period = int64_t((1.0 / 250.0) * TS::NSEC_PER_SECOND);
         int64_t toff = 0;
         int64_t integral = 0;
         clock_gettime(CLOCK_MONOTONIC, &tick);
