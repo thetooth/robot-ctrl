@@ -6,12 +6,12 @@ bool Robot::FSM::tracking()
     {
         // Set input parameters
         input.current_position = {
-            A1.getPosition(),
-            A2.getPosition(),
+            J1.getPosition(),
+            J2.getPosition(),
         };
         input.current_velocity = {
-            A1.getVelocity(),
-            A2.getVelocity(),
+            J1.getVelocity(),
+            J2.getVelocity(),
         };
         input.current_acceleration = {0.0, 0.0};
         otg.reset();
@@ -22,27 +22,24 @@ bool Robot::FSM::tracking()
     }
 
     auto [fx, fy, preOk] = IK::preprocessing(target.x, target.y);
-    auto [alpha, beta, phi, ikOk] = IK::inverseKinematics(fx, fy);
+    auto [alpha, beta, phi, theta, ikOk] = IK::inverseKinematics(fx, fy, target.z, target.r);
     if (ikOk)
     {
         input.target_position[0] = alpha;
         input.target_position[1] = beta;
-        input.target_position[2] = phi + target.r;
-        input.target_position[3] = target.z;
+        input.target_position[2] = phi;
+        input.target_position[3] = theta;
     }
     KinematicAlarm = !preOk || !ikOk || alpha == 240 || beta == -150;
 
     status.otg.result = otg.update(input, output);
     auto &p = output.new_position;
 
-    A1Fault = A1.move(p[0]);
-    A2Fault = A2.move(p[1]);
-
-    if (A1Fault || A2Fault)
+    if (J1.move(p[0]) || J2.move(p[1]))
     {
         diagMsgs.push_back("Drive fault occurred, stopping");
-        diagMsgs.push_back("A1 " + A1.lastFault);
-        diagMsgs.push_back("A2 " + A2.lastFault);
+        diagMsgs.push_back("J1 " + J1.lastFault);
+        diagMsgs.push_back("J2 " + J2.lastFault);
         run = false;
         return true;
     }
@@ -50,7 +47,7 @@ bool Robot::FSM::tracking()
     // Set input parameters
     output.pass_to_input(input);
     // spdlog::trace("position: {:03.2f} {:03.2f} {:03.2f} {:03.2f}", alpha, beta, p[0], p[1]);
-    // spdlog::debug("deg/s {} {}", A1.getVelocity(), A2.getVelocity());
+    // spdlog::debug("deg/s {} {}", J1.getVelocity(), J2.getVelocity());
 
     return false;
 }

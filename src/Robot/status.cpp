@@ -22,7 +22,7 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
     }
 
     auto alarm = false;
-    if (A1Fault || A2Fault || KinematicAlarm)
+    if (J1.fault || J2.fault || KinematicAlarm)
     {
         alarm = true;
     }
@@ -33,7 +33,8 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         diagStr.append(msg + "\n");
     }
 
-    auto [dx, dy] = IK::forwardKinematics(A1.getPosition(), A2.getPosition());
+    auto [dx, dy, dz, dr] =
+        IK::forwardKinematics(J1.getPosition(), J2.getPosition(), input.current_position[2], input.current_position[3]);
 
     status.run = run;
     status.alarm = alarm;
@@ -42,14 +43,16 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
     status.pose = IK::Pose{
         .x = dx,
         .y = dy,
-        .z = input.current_position[3],
-        .r = target.r,
-        .alpha = A1.getPosition(),
-        .beta = A2.getPosition(),
+        .z = dz,
+        .r = dr,
+        .alpha = J1.getPosition(),
+        .beta = J2.getPosition(),
         .phi = input.current_position[2],
-        .alphaVelocity = A1.getVelocity(),
-        .betaVelocity = A2.getVelocity(),
+        .theta = input.current_position[3],
+        .alphaVelocity = J1.getVelocity(),
+        .betaVelocity = J2.getVelocity(),
         .phiVelocity = input.current_velocity[2],
+        .thetaVelocity = input.current_velocity[3],
     };
 
     json j = status;
