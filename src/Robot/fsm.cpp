@@ -28,7 +28,7 @@ void Robot::FSM::update()
         next = Halting;
         break;
     case Halting:
-        if (A1.compareState(CANOpenState::OFF) && A2.compareState(CANOpenState::OFF))
+        if (J1.compareState(CANOpenState::OFF) && J2.compareState(CANOpenState::OFF))
         {
             next = Idle;
         }
@@ -40,7 +40,7 @@ void Robot::FSM::update()
         next = Starting;
         break;
     case Starting:
-        if (A1.compareState(CANOpenState::ON) && A2.compareState(CANOpenState::ON))
+        if (J1.compareState(CANOpenState::ON) && J2.compareState(CANOpenState::ON))
         {
             if (needsHoming)
             {
@@ -60,14 +60,14 @@ void Robot::FSM::update()
         break;
     case Home:
         Arm.setModeOfOperation(CANOpen::control::mode::HOME);
-        A1.setHomingOffset(-235);
-        A2.setHomingOffset(145);
+        J1.setHomingOffset(-235);
+        J2.setHomingOffset(145);
         Arm.setCommand(CANOpenCommand::HOME);
 
         next = Homing;
     case Homing: {
         auto homingResult =
-            A1.compareState(CANOpenState::HOMING_COMPLETE) && A2.compareState(CANOpenState::HOMING_COMPLETE);
+            J1.compareState(CANOpenState::HOMING_COMPLETE) && J2.compareState(CANOpenState::HOMING_COMPLETE);
         if (homingResult)
         {
             diagMsgs.push_back("Homing complete");

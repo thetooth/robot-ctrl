@@ -46,8 +46,8 @@ namespace Robot
         State next = Idle;
         std::deque<std::string> diagMsgs = {};
 
-        Drive::Motor A1;
-        Drive::Motor A2;
+        Drive::Motor J1;
+        Drive::Motor J2;
         Drive::Group Arm;
 
         // Create instances: the Ruckig OTG as well as input and output parameters
@@ -62,14 +62,14 @@ namespace Robot
 
         Status status;
 
-        bool A1Fault, A2Fault, KinematicAlarm = false;
+        bool KinematicAlarm = false;
 
         FSM()
         {
             // Set dynamic limits
-            input.max_velocity = {600.0, 600.0, 1000.0, 1000.0};
-            input.max_acceleration = {2500.0, 2500.0, 10000.0, 10000.0};
-            input.max_jerk = {10000.0, 10000.0, 10000.0, 10000.0};
+            input.max_velocity = {300.0, 300.0, 1000.0, 40000.0};
+            input.max_acceleration = {2500.0, 2500.0, 10000.0, 400000.0};
+            input.max_jerk = {10000.0, 10000.0, 10000.0, 1000000.0};
 
             // Set initial conditions
             input.current_position = {0.0, 0.0, 0.0, 0.0};
@@ -77,7 +77,7 @@ namespace Robot
             input.current_acceleration = {0.0, 0.0, 0.0, 0.0};
             input.target_position = {0.0, 0.0, 0.0, 0.0};
             input.target_velocity = {0.0, 0.0, 0.0, 0.0};
-            input.synchronization = Synchronization::TimeIfNecessary;
+            input.synchronization = Synchronization::Phase;
         }
 
         void update();

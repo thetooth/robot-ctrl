@@ -23,7 +23,7 @@
 // EtherCAT variables:
 char IOmap[4096];
 unsigned int usedmem;
-int A1ID, A2ID;
+int J1ID, J2ID;
 
 // FSM
 auto fsm = Robot::FSM();
@@ -63,30 +63,31 @@ int nic_setup(char *ifname)
     for (auto cnt = 1; cnt <= ec_slavecount; cnt++)
     {
         auto &&slave = ec_slave[cnt];
+        spdlog::debug("Inspecting slave {}, {} {} {} {}", cnt, slave.name, slave.eep_man, slave.eep_id, slave.eep_rev);
         if (std::strcmp(slave.name, "ASDA-B3-E CoE Drive") == 0)
         {
-            if (A1ID == 0)
+            if (J1ID == 0)
             {
-                spdlog::debug("Assign {} {} as A1", slave.name, cnt);
-                A1ID = cnt;
+                spdlog::debug("Assign {} {} as J1", slave.name, cnt);
+                J1ID = cnt;
             }
-            else if (A2ID == 0)
+            else if (J2ID == 0)
             {
-                spdlog::debug("Assign {} {} as A2", slave.name, cnt);
-                A2ID = cnt;
+                spdlog::debug("Assign {} {} as J2", slave.name, cnt);
+                J2ID = cnt;
             }
         }
     }
 
-    if (A1ID == 0 || A2ID == 0)
+    if (J1ID == 0 || J2ID == 0)
     {
         spdlog::critical("One or more drives are missing");
         return 1;
     }
 
     // Drive startup params
-    ec_slave[A1ID].PO2SOconfig = Delta::PO2SOconfig;
-    ec_slave[A2ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[J1ID].PO2SOconfig = Delta::PO2SOconfig;
+    ec_slave[J2ID].PO2SOconfig = Delta::PO2SOconfig;
 
     ec_statecheck(0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE * 4);
 
@@ -94,8 +95,8 @@ int nic_setup(char *ifname)
     ec_readstate();
 
     // DC Setup
-    ec_dcsync0(A1ID, true, SYNC0, 0);
-    ec_dcsync0(A2ID, true, SYNC0, 0);
+    ec_dcsync0(J1ID, true, SYNC0, 0);
+    ec_dcsync0(J2ID, true, SYNC0, 0);
 
     usedmem = ec_config_map(&IOmap);
     if (!(usedmem <= sizeof(IOmap)))
@@ -149,10 +150,10 @@ int main()
     }
 
     // Assign slave ids and setup PDO table
-    fsm.A1 = Drive::Motor{A1ID, PPU * GEAR, PPV * GEAR, -65, 245};
-    fsm.A2 = Drive::Motor{A2ID, PPU * GEAR, PPV * GEAR, -155, 155};
+    fsm.J1 = Drive::Motor{J1ID, PPU * GEAR, PPV * GEAR, -65, 245};
+    fsm.J2 = Drive::Motor{J2ID, PPU * GEAR, PPV * GEAR, -155, 155};
     // Assign drive groups
-    fsm.Arm = Drive::Group{&fsm.A1, &fsm.A2};
+    fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2};
     // fsm.Gripper = Drive::Group{&fsm.}
 
     // Setup message bus
