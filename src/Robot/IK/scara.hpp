@@ -12,18 +12,19 @@ namespace IK
 {
     const auto L1 = 200.0;
     const auto L2 = 200.0;
+    const auto ScrewPitch = 16.0 / 360;
 
-    std::tuple<double, double> forwardKinematics(double theta1, double theta2);
-    std::tuple<double, double, double, bool> inverseKinematics(double x, double y);
+    std::tuple<double, double, double, double> forwardKinematics(double alpha, double beta, double phi, double z);
+    std::tuple<double, double, double, double, bool> inverseKinematics(double x, double y, double z, double r);
     std::tuple<double, double, bool> preprocessing(double x, double y);
 
     using json = nlohmann::json;
     struct Pose
     {
         double x, y, z, r;
-        double alpha, beta, phi;
+        double alpha, beta, phi, theta;
         double alphaVelocity, betaVelocity;
-        double phiVelocity, zVelocity;
+        double phiVelocity, thetaVelocity;
     };
     void to_json(json &j, const Pose &p);
     void from_json(const json &j, Pose &p);

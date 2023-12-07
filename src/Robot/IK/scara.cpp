@@ -1,18 +1,25 @@
 #include "scara.hpp"
 
-std::tuple<double, double> IK::forwardKinematics(double alpha, double beta)
+// Forward kinematics
+// Returns x, y, z, r in cartesian coordinates
+std::tuple<double, double, double, double> IK::forwardKinematics(double alpha, double beta, double phi, double theta)
 {
     double alphaF = alpha * M_PI / 180; // degrees to radians
     double betaF = beta * M_PI / 180;
+    double phiF = 90 + alpha + beta;
     auto xP = L1 * cos(alphaF) + L2 * cos(alphaF + betaF);
     auto yP = L1 * sin(alphaF) + L2 * sin(alphaF + betaF);
+    auto zP = (theta - phi) * ScrewPitch;
+    auto rP = (-1) * (phiF + phi);
 
-    return {xP, yP};
+    return {xP, yP, zP, rP};
 }
 
-std::tuple<double, double, double, bool> IK::inverseKinematics(double x, double y)
+// Inverse kinematics
+// Returns alpha, beta, phi, theta in joint space
+std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x, double y, double z, double r)
 {
-    double alpha, beta, phi = 0;
+    double alpha, beta, phi, theta = 0;
 
     beta = acos((pow(x, 2.0) + pow(y, 2.0) - pow(L1, 2.0) - pow(L2, 2.0)) / (2 * L1 * L2));
     if (x < 0 & y < 0)
@@ -28,7 +35,7 @@ std::tuple<double, double, double, bool> IK::inverseKinematics(double x, double 
     // Somethings not right...
     if (isnan(alpha) || isnan(beta))
     {
-        return {alpha, beta, phi, false};
+        return {alpha, beta, phi, theta, false};
     }
 
     const auto maxAngle = 150.0;
@@ -45,9 +52,7 @@ std::tuple<double, double, double, bool> IK::inverseKinematics(double x, double 
     if (x < 0 && y < 0)
     { // 3rd quadrant
         alpha = 270 - alpha;
-        beta = std::min(maxAngle, beta); // Prevent elbow under collision with A1 (radius)
-        phi = 270 - alpha - beta;
-        phi = (-1) * phi;
+        beta = std::min(maxAngle, beta); // Prevent elbow under collision with J1 (radius)
     }
     if (x >= 0 && y < 0)
     { // 4th quadrant
@@ -60,24 +65,17 @@ std::tuple<double, double, double, bool> IK::inverseKinematics(double x, double 
 
     // Prevent elbow under collision with base during transition between 2nd and 3rd quadrant
     alpha = std::min(270 - 30.0, alpha);
-    // Prevent elbow over collision with A1 (radius)
+    // Prevent elbow over collision with J1 (radius)
     beta = std::max(-maxAngle, beta);
 
     // Calculate "phi" angle so gripper is parallel to the X axis
-    phi = 90 + alpha + beta;
+    phi = 90 + alpha + beta + r;
     phi = (-1) * phi;
 
-    // Angle adjustment depending in which quadrant the final tool coordinate x,y is
-    if (x < 0 && y < 0)
-    { // 3d quadrant
-        phi = 270 - alpha - beta;
-    }
-    if (abs(phi) > 165)
-    {
-        phi = 180 + phi;
-    }
+    // Calculate "theta" angle so that the gripper is at the correct height during rotation
+    theta = phi + z / ScrewPitch;
 
-    return {alpha, beta, phi, true};
+    return {alpha, beta, phi, theta, true};
 }
 
 std::tuple<double, double, bool> IK::preprocessing(double x, double y)
@@ -110,20 +108,22 @@ void IK::to_json(json &j, const Pose &p)
         {"alpha", p.alpha},
         {"beta", p.beta},
         {"phi", p.phi},
+        {"theta", p.theta},
         {"alphaVelocity", p.alphaVelocity},
         {"betaVelocity", p.betaVelocity},
         {"phiVelocity", p.phiVelocity},
-        {"zVelocity", p.zVelocity},
+        {"thetaVelocity", p.thetaVelocity},
     };
 }
 void IK::from_json(const json &j, Pose &p)
 {
-    j.at("x").get_to(p.x);
-    j.at("y").get_to(p.y);
+    p.x = j.value("x", 0.0);
+    p.y = j.value("y", 0.0);
     p.z = j.value("z", 0.0);
     p.r = j.value("r", 0.0);
 
     p.alpha = j.value("alpha", 0.0);
     p.beta = j.value("beta", 0.0);
     p.phi = j.value("phi", 0.0);
+    p.theta = j.value("theta", 0.0);
 }
