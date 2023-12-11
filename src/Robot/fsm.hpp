@@ -67,9 +67,9 @@ namespace Robot
         FSM()
         {
             // Set dynamic limits
-            input.max_velocity = {300.0, 300.0, 1000.0, 40000.0};
-            input.max_acceleration = {2500.0, 2500.0, 10000.0, 400000.0};
-            input.max_jerk = {10000.0, 10000.0, 10000.0, 1000000.0};
+            input.max_velocity = {300.0, 300.0, 40000.0, 40000.0};
+            input.max_acceleration = {2500.0, 2500.0, 400000.0, 400000.0};
+            input.max_jerk = {10000.0, 10000.0, 1000000.0, 1000000.0};
 
             // Set initial conditions
             input.current_position = {0.0, 0.0, 0.0, 0.0};

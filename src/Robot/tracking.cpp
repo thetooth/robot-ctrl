@@ -21,8 +21,8 @@ bool Robot::FSM::tracking()
         inSync = true;
     }
 
-    auto [fx, fy, preOk] = IK::preprocessing(target.x, target.y);
-    auto [alpha, beta, phi, theta, ikOk] = IK::inverseKinematics(fx, fy, target.z, target.r);
+    auto [fx, fy, fz, fr, preOk] = IK::preprocessing(target.x, target.y, target.z, target.r);
+    auto [alpha, beta, phi, theta, ikOk] = IK::inverseKinematics(fx, fy, fz, fr);
     if (ikOk)
     {
         input.target_position[0] = alpha;

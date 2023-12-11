@@ -1,3 +1,7 @@
+/**
+ * @file fsm.cpp
+ * @brief Implementation of the FSM (Finite State Machine) class for controlling a robot.
+ */
 #include "fsm.hpp"
 
 void Robot::FSM::update()
