@@ -6,7 +6,7 @@ std::tuple<double, double, double, double> IK::forwardKinematics(double alpha, d
 {
     double alphaF = alpha * M_PI / 180; // degrees to radians
     double betaF = beta * M_PI / 180;
-    double phiF = 90 + alpha + beta;
+    double phiF = -90 + alpha + beta;
     auto xP = L1 * cos(alphaF) + L2 * cos(alphaF + betaF);
     auto yP = L1 * sin(alphaF) + L2 * sin(alphaF + betaF);
     auto zP = (theta - phi) * ScrewPitch;
@@ -69,7 +69,7 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     beta = std::max(-maxAngle, beta);
 
     // Calculate "phi" angle so gripper is parallel to the X axis
-    phi = 90 + alpha + beta + r;
+    phi = -90 + alpha + beta + r;
     phi = (-1) * phi;
 
     // Calculate "theta" angle so that the gripper is at the correct height during rotation
@@ -78,7 +78,7 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     return {alpha, beta, phi, theta, true};
 }
 
-std::tuple<double, double, bool> IK::preprocessing(double x, double y)
+std::tuple<double, double, double, double, bool> IK::preprocessing(double x, double y, double z, double r)
 {
     const auto baseKeepOut = 100.0;
     auto ok = true;
@@ -94,8 +94,10 @@ std::tuple<double, double, bool> IK::preprocessing(double x, double y)
         x = std::max(x, baseKeepOut);
         ok = x > baseKeepOut;
     }
+    z = std::max(z, 0.0);
+    r = std::min(std::max(r, -180.0), 180.0);
 
-    return {x, y, ok};
+    return {x, y, z, r, ok};
 }
 
 void IK::to_json(json &j, const Pose &p)

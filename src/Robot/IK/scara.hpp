@@ -16,7 +16,7 @@ namespace IK
 
     std::tuple<double, double, double, double> forwardKinematics(double alpha, double beta, double phi, double z);
     std::tuple<double, double, double, double, bool> inverseKinematics(double x, double y, double z, double r);
-    std::tuple<double, double, bool> preprocessing(double x, double y);
+    std::tuple<double, double, double, double, bool> preprocessing(double x, double y, double z, double r);
 
     using json = nlohmann::json;
     struct Pose
