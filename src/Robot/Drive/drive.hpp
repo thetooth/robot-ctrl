@@ -4,12 +4,15 @@
 #include "CAN/CoE.hpp"
 #include "delta.hpp"
 #include "ethercat.h"
+#include "nlohmann/json.hpp"
 #include "osal.h"
 #include "oshw.h"
 
 namespace Drive
 {
     namespace fmt = spdlog::fmt_lib;
+    using json = nlohmann::json;
+
     class Motor : public CANOpen::FSM
     {
       public:
@@ -35,12 +38,18 @@ namespace Drive
         }
         void update();
         bool move(double position);
-        double getPosition();
-        double getVelocity();
+        double getPosition() const;
+        double getVelocity() const;
+        double getTorque() const;
+        double getFollowingError() const;
         int setModeOfOperation(CANOpen::control::mode value);
         int setHomingOffset(int32_t value);
+        int setTorqueLimit(double value);
+        int setFollowingWindow(double value);
         int faultReset();
     };
+
+    void to_json(json &j, const Motor &m);
 } // namespace Drive
 
 #endif

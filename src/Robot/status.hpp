@@ -21,6 +21,7 @@ namespace Robot
         bool alarm;
         std::string state;
         OTGStatus otg;
+        std::vector<Drive::Motor> drives;
         std::string diagMsg;
         IK::Pose pose;
     };

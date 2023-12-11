@@ -25,9 +25,11 @@ namespace Delta
         uint16_t status_word;    // 0x6041
         int32_t actual_position; // 0x6064 PPU
         int32_t actual_velocity; // 0x606C 0.1 rpm
+        int16_t actual_torque;   // 0x6077 0.1 %
+        int32_t following_error; // 0x60F4 PPU
         uint32_t digital_inputs; // 0x60FD [0 Neg Limit][1 Pos Limit][2 Homing switch][16-19 DI1-DI4]
     } tx_t;
-    constexpr uint32_t tx_mapping[] = {0x60410010, 0x60640020, 0x606C0020, 0x60FD0020};
+    constexpr uint32_t tx_mapping[] = {0x60410010, 0x60640020, 0x606C0020, 0x60770010, 0x60F40020, 0x60FD0020};
     constexpr uint32_t tx_mapping_count = sizeof(tx_mapping) / sizeof(uint32_t);
 
     [[maybe_unused]] static int PO2SOconfig(uint16_t slave)

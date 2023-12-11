@@ -20,6 +20,8 @@ namespace Drive
         void update();
         void setCommand(CANOpenCommand command);
         int setModeOfOperation(CANOpen::control::mode value);
+        int setTorqueLimit(double value);
+        int setFollowingWindow(double value);
         int faultReset();
     };
 

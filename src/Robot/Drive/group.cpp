@@ -26,6 +26,26 @@ int Drive::Group::setModeOfOperation(CANOpen::control::mode value)
     return wkc;
 }
 
+int Drive::Group::setTorqueLimit(double value)
+{
+    auto wkc = 0;
+    for (auto &&drive : drives)
+    {
+        wkc += drive->setTorqueLimit(value);
+    }
+    return wkc;
+}
+
+int Drive::Group::setFollowingWindow(double value)
+{
+    auto wkc = 0;
+    for (auto &&drive : drives)
+    {
+        wkc += drive->setFollowingWindow(value);
+    }
+    return wkc;
+}
+
 int Drive::Group::faultReset()
 {
     auto wkc = 0;

@@ -8,8 +8,8 @@ void Robot::to_json(json &j, const OTGStatus &p)
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
-        {"run", p.run}, {"alarm", p.alarm},     {"state", p.state},
-        {"otg", p.otg}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
+        {"run", p.run},       {"alarm", p.alarm},     {"state", p.state}, {"otg", p.otg},
+        {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
     };
 }
 

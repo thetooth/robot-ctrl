@@ -152,9 +152,12 @@ int main()
     // Assign slave ids and setup PDO table
     fsm.J1 = Drive::Motor{J1ID, PPU * GEAR, PPV * GEAR, -65, 245};
     fsm.J2 = Drive::Motor{J2ID, PPU * GEAR, PPV * GEAR, -155, 155};
+    fsm.status.drives = std::vector<Drive::Motor>{
+        fsm.J1,
+        fsm.J2,
+    };
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2};
-    // fsm.Gripper = Drive::Group{&fsm.}
 
     // Setup message bus
     auto monitor = std::thread(NC::Monitor, &fsm);
@@ -167,6 +170,9 @@ int main()
         auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
         auto wkc = 0;
         spdlog::debug("Expected WKC {}", expectedWKC);
+
+        fsm.Arm.setTorqueLimit(10);
+        fsm.Arm.setFollowingWindow(300);
 
         // Timing
         struct timespec tick;
