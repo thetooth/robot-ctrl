@@ -10,15 +10,15 @@
 //! earth orbit. For safety the target is set to the current position every cycle.
 void Drive::Motor::update()
 {
-    CANOpen::FSM::update(InPDO->status_word);
+    CANOpen::FSM::update(pdo->getStatusWord());
     if (compareState(CANOpenState::FAULT) && !fault)
     {
         lastFault = fmt::format("Drive {} CoE entered {} state", slaveID, CANOpen::FSM::to_string());
         spdlog::error(lastFault);
         fault = true;
     }
-    OutPDO->control_word = CANOpen::FSM::getControlWord();
-    OutPDO->target_position = InPDO->actual_position;
+    pdo->setControlWord(CANOpen::FSM::getControlWord());
+    pdo->setTargetPosition(pdo->getActualPosition());
 }
 
 //! @brief Move the drive to a target position
@@ -37,7 +37,7 @@ bool Drive::Motor::move(double target)
     {
         return fault;
     }
-    auto current = InPDO->actual_position / positionRatio;
+    auto current = pdo->getActualPosition() / positionRatio;
     if (std::abs(target - current) > 10)
     {
         fault = true;
@@ -53,7 +53,7 @@ bool Drive::Motor::move(double target)
         spdlog::error(lastFault);
         return fault;
     }
-    OutPDO->target_position = target * positionRatio;
+    pdo->setTargetPosition(target * positionRatio);
     return fault;
 }
 
@@ -64,7 +64,7 @@ bool Drive::Motor::move(double target)
 //! @return The current position of the drive
 double Drive::Motor::getPosition() const
 {
-    return InPDO->actual_position / positionRatio;
+    return pdo->getActualPosition() / positionRatio;
 }
 
 //! @brief Get the current velocity of the drive
@@ -74,7 +74,7 @@ double Drive::Motor::getPosition() const
 //! @return The current velocity of the drive
 double Drive::Motor::getVelocity() const
 {
-    return InPDO->actual_velocity / velocityRatio;
+    return pdo->getActualVelocity() / velocityRatio;
 }
 
 //! @brief Get the current torque of the drive
@@ -84,7 +84,7 @@ double Drive::Motor::getVelocity() const
 //! @return The current torque of the drive
 double Drive::Motor::getTorque() const
 {
-    return InPDO->actual_torque / 10.0;
+    return pdo->getActualTorque() / 10.0;
 }
 
 //! @brief Get the current following error of the drive
@@ -94,7 +94,7 @@ double Drive::Motor::getTorque() const
 //! @return The current following error of the drive
 double Drive::Motor::getFollowingError() const
 {
-    return InPDO->following_error / positionRatio;
+    return pdo->getFollowingError() / positionRatio;
 }
 
 //! @brief Set the mode of operation for the drive

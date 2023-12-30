@@ -15,12 +15,21 @@ namespace Robot
     };
     void to_json(json &j, const OTGStatus &p);
 
+    struct EtherCATStatus
+    {
+        int64_t interval;
+        int64_t drift;
+        int64_t integral;
+    };
+    void to_json(json &j, const EtherCATStatus &p);
+
     struct Status
     {
         bool run;
         bool alarm;
         std::string state;
         OTGStatus otg;
+        EtherCATStatus ethercat;
         std::vector<Drive::Motor> drives;
         std::string diagMsg;
         IK::Pose pose;

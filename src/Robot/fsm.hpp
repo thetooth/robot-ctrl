@@ -39,7 +39,7 @@ namespace Robot
       public:
         bool run;
         bool estop = true;
-        bool needsHoming = true;
+        bool needsHoming = false;
         bool trackAfterHoming = true;
         bool inSync;
 
@@ -48,6 +48,8 @@ namespace Robot
 
         Drive::Motor J1;
         Drive::Motor J2;
+        Drive::Motor J3;
+        Drive::Motor J4;
         Drive::Group Arm;
 
         // Create instances: the Ruckig OTG as well as input and output parameters
@@ -56,7 +58,20 @@ namespace Robot
         OutputParameter<4> output;
 
         // Target
-        IK::Pose target = {.x = 0, .y = 150};
+        IK::Pose target = {
+            .x = 0,
+            .y = 150,
+            .z = 0,
+            .r = 0,
+            .alpha = 0,
+            .beta = 0,
+            .phi = 0,
+            .theta = 0,
+            .alphaVelocity = 0,
+            .betaVelocity = 0,
+            .phiVelocity = 0,
+            .thetaVelocity = 0,
+        };
         // Waypoints
         std::vector<IK::Pose> waypoints;
 

@@ -22,7 +22,7 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     double alpha, beta, phi, theta = 0;
 
     beta = acos((pow(x, 2.0) + pow(y, 2.0) - pow(L1, 2.0) - pow(L2, 2.0)) / (2 * L1 * L2));
-    if (x < 0 & y < 0)
+    if (x < 0 && y < 0)
     {
         beta = (-1) * beta;
     }

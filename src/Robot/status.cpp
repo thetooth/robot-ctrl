@@ -5,11 +5,16 @@ void Robot::to_json(json &j, const OTGStatus &p)
     j = json{{"result", p.result}};
 }
 
+void Robot::to_json(json &j, const EtherCATStatus &p)
+{
+    j = json{{"interval", p.interval}, {"drift", p.drift}, {"integral", p.integral}};
+}
+
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
         {"run", p.run},       {"alarm", p.alarm},     {"state", p.state}, {"otg", p.otg},
-        {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
+        {"ethercat", p.ethercat}, {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
     };
 }
 
