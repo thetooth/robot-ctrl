@@ -41,15 +41,14 @@ bool Drive::Motor::move(double target)
     if (std::abs(target - current) > 10)
     {
         fault = true;
-        lastFault =
-            fmt::format("Target position {} from current position {} exceeds dynamic capabilities", target, current);
+        lastFault = fmt::format("Target deviation", target, current);
         spdlog::error(lastFault);
         return fault;
     }
     if (target < minPosition || target > maxPosition)
     {
         fault = true;
-        lastFault = fmt::format("Target position {} outside soft limits", target);
+        lastFault = fmt::format("Outside soft limits", target);
         spdlog::error(lastFault);
         return fault;
     }
@@ -95,6 +94,16 @@ double Drive::Motor::getTorque() const
 double Drive::Motor::getFollowingError() const
 {
     return pdo->getFollowingError() / positionRatio;
+}
+
+//! @brief Get the current error code of the drive
+//!
+//! This function returns the current error code of the drive.
+//!
+//! @return The current error code of the drive
+uint16_t Drive::Motor::getErrorCode() const
+{
+    return InPDO->error_code;
 }
 
 //! @brief Set the mode of operation for the drive
@@ -146,7 +155,7 @@ int Drive::Motor::setFollowingWindow(double value)
 int Drive::Motor::faultReset()
 {
     fault = false;
-    lastFault = "I'm OK";
+    lastFault = "OK";
     return ec_SDOwrite(slaveID, 0x6040, 0, FALSE, sizeof(CANOpen::control::word::FAULT_RESET),
                        &CANOpen::control::word::FAULT_RESET, EC_TIMEOUTRXM);
 }
@@ -155,8 +164,13 @@ int Drive::Motor::faultReset()
 void Drive::to_json(json &j, const Motor &m)
 {
     j = json{
-        {"slaveID", m.slaveID},          {"fault", m.fault},
-        {"lastFault", m.lastFault},      {"followingError", m.getFollowingError()},
+        {"slaveID", m.slaveID},
+        {"fault", m.fault},
+        {"lastFault", m.lastFault},
+        {"followingError", m.getFollowingError()},
         {"actualTorque", m.getTorque()},
+        {"statusWord", m.InPDO->status_word},
+        {"controlWord", m.OutPDO->control_word},
+        {"errorCode", m.getErrorCode()},
     };
 }

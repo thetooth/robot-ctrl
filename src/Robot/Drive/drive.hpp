@@ -23,7 +23,7 @@ namespace Drive
         double positionRatio, velocityRatio;
         double minPosition, maxPosition;
         bool fault;
-        std::string lastFault = "I'm OK";
+        std::string lastFault = "OK";
 
         Motor()
         {
@@ -40,6 +40,7 @@ namespace Drive
         double getVelocity() const;
         double getTorque() const;
         double getFollowingError() const;
+        uint16_t getErrorCode() const;
         int setModeOfOperation(CANOpen::control::mode value);
         int setHomingOffset(int32_t value);
         int setTorqueLimit(double value);

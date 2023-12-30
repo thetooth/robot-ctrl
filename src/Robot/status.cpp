@@ -59,6 +59,7 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         .phiVelocity = input.current_velocity[2],
         .thetaVelocity = input.current_velocity[3],
     };
+    status.drives = {J1, J2};
 
     json j = status;
     auto payload = j.dump();

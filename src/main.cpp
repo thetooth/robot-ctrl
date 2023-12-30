@@ -152,10 +152,6 @@ int main()
     // Assign slave ids and setup PDO table
     fsm.J1 = Drive::Motor{J1ID, PPU * GEAR, PPV * GEAR, -65, 245};
     fsm.J2 = Drive::Motor{J2ID, PPU * GEAR, PPV * GEAR, -155, 155};
-    fsm.status.drives = std::vector<Drive::Motor>{
-        fsm.J1,
-        fsm.J2,
-    };
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2};
 
