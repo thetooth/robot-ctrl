@@ -17,6 +17,13 @@ void Drive::Motor::update()
         spdlog::error(lastFault);
         fault = true;
     }
+    auto errorCode = pdo->getErrorCode();
+    if (errorCode != 0 && !fault)
+    {
+        lastFault = fmt::format("Drive {} error code {}", slaveID, errorCode);
+        spdlog::error(lastFault);
+        fault = true;
+    }
     pdo->setControlWord(CANOpen::FSM::getControlWord());
     pdo->setTargetPosition(pdo->getActualPosition());
 }
@@ -38,7 +45,7 @@ bool Drive::Motor::move(double target)
         return fault;
     }
     auto current = pdo->getActualPosition() / positionRatio;
-    if (std::abs(target - current) > 10)
+    if (std::abs(target - current) > 300)
     {
         fault = true;
         lastFault = fmt::format("Target deviation", target, current);
@@ -103,7 +110,7 @@ double Drive::Motor::getFollowingError() const
 //! @return The current error code of the drive
 uint16_t Drive::Motor::getErrorCode() const
 {
-    return InPDO->error_code;
+    return pdo->getErrorCode();
 }
 
 //! @brief Set the mode of operation for the drive
@@ -169,8 +176,8 @@ void Drive::to_json(json &j, const Motor &m)
         {"lastFault", m.lastFault},
         {"followingError", m.getFollowingError()},
         {"actualTorque", m.getTorque()},
-        {"statusWord", m.InPDO->status_word},
-        {"controlWord", m.OutPDO->control_word},
+        {"statusWord", m.pdo->getStatusWord()},
+        {"controlWord", m.getControlWord()},
         {"errorCode", m.getErrorCode()},
     };
 }

@@ -54,6 +54,7 @@ namespace Delta
         int32_t getActualVelocity() const;
         int16_t getActualTorque() const;
         int32_t getFollowingError() const;
+        uint16_t getErrorCode() const;
         uint32_t getDigitalInputs() const;
 
         void setControlWord(uint16_t value);

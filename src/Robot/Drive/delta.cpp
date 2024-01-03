@@ -75,6 +75,11 @@ int32_t Delta::PDO::getFollowingError() const
     return in->following_error;
 }
 
+uint16_t Delta::PDO::getErrorCode() const
+{
+    return in->error_code;
+}
+
 uint32_t Delta::PDO::getDigitalInputs() const
 {
     return in->digital_inputs;

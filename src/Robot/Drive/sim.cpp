@@ -26,6 +26,11 @@ int32_t Sim::PDO::getFollowingError() const
     return 0;
 }
 
+uint16_t Sim::PDO::getErrorCode() const
+{
+    return 0;
+}
+
 uint32_t Sim::PDO::getDigitalInputs() const
 {
     return 0;

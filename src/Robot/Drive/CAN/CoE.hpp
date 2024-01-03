@@ -119,7 +119,7 @@ namespace CANOpen
         {
             slave_id_ = slave;
         }
-        uint16_t getControlWord()
+        uint16_t getControlWord() const
         {
             return control_word_;
         }
