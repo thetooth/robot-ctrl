@@ -18,7 +18,8 @@ namespace Robot
     struct EtherCATStatus
     {
         int64_t interval;
-        int64_t drift;
+        int64_t sync0;
+        int64_t compensation;
         int64_t integral;
     };
     void to_json(json &j, const EtherCATStatus &p);

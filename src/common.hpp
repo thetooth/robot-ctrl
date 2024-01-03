@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "ethercat.h"
+#include "spdlog/spdlog.h"
 
 #define GEAR (50.0)      // 50:1 Harmonic drive
 #define PPU (46603.0)    // Units per degree
@@ -18,10 +19,8 @@ namespace TS
 
     [[maybe_unused]] static void DCSync(int64_t reftime, int64_t cycletime, int64_t *integral, int64_t *offsettime)
     {
-        // static int64_t integral;
-        int64_t delta;
         /* set linux sync point 500us later than DC sync, just as example */
-        delta = (reftime - 500000) % cycletime;
+        int64_t delta = (reftime - 50000) % cycletime;
         if (delta > (cycletime / 2))
         {
             delta = delta - cycletime;
@@ -34,7 +33,7 @@ namespace TS
         {
             (*integral)--;
         }
-        *offsettime = -(delta / 100) - (*integral / 20);
+        *offsettime = -(delta / 100) - (*integral / 200); // Original 100 / 20
     }
 
     [[maybe_unused]] static void ApplyOffset(struct timespec *ts, int64 addtime)
@@ -63,5 +62,35 @@ namespace TS
         }
     }
 } // namespace TS
+
+namespace Kernel
+{
+    static int pm_qos_fd = -1;
+
+    [[maybe_unused]] static void start_low_latency(void)
+    {
+        int32_t target = 0;
+
+        if (pm_qos_fd >= 0)
+        {
+            return;
+        }
+        pm_qos_fd = open("/dev/cpu_dma_latency", O_RDWR);
+        if (pm_qos_fd < 0)
+        {
+            spdlog::critical("Failed to open PM QOS file: {}", strerror(errno));
+            exit(errno);
+        }
+        write(pm_qos_fd, &target, sizeof(target));
+    }
+
+    [[maybe_unused]] static void stop_low_latency(void)
+    {
+        if (pm_qos_fd >= 0)
+        {
+            close(pm_qos_fd);
+        }
+    }
+} // namespace Kernel
 
 #endif

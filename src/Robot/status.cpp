@@ -7,13 +7,13 @@ void Robot::to_json(json &j, const OTGStatus &p)
 
 void Robot::to_json(json &j, const EtherCATStatus &p)
 {
-    j = json{{"interval", p.interval}, {"drift", p.drift}, {"integral", p.integral}};
+    j = json{{"interval", p.interval}, {"sync0", p.sync0}, {"compensation", p.compensation}, {"integral", p.integral}};
 }
 
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
-        {"run", p.run},       {"alarm", p.alarm},     {"state", p.state}, {"otg", p.otg},
+        {"run", p.run},           {"alarm", p.alarm},   {"state", p.state},     {"otg", p.otg},
         {"ethercat", p.ethercat}, {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
     };
 }
@@ -52,14 +52,14 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         .r = dr,
         .alpha = J1.getPosition(),
         .beta = J2.getPosition(),
-        .phi = input.current_position[2],
-        .theta = input.current_position[3],
+        .phi = J3.getPosition(),
+        .theta = J4.getPosition(),
         .alphaVelocity = J1.getVelocity(),
         .betaVelocity = J2.getVelocity(),
         .phiVelocity = input.current_velocity[2],
         .thetaVelocity = input.current_velocity[3],
     };
-    status.drives = {J1, J2};
+    status.drives = {J1, J2, J3, J4};
 
     json j = status;
     auto payload = j.dump();

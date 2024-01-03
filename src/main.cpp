@@ -17,18 +17,27 @@
 #include "ruckig/ruckig.hpp"
 #include "spdlog/spdlog.h"
 
+#include "BB/blackbox.hpp"
 #include "NC/control.hpp"
+#include "Robot/Drive/delta.hpp"
+#include "Robot/Drive/sim.hpp"
 #include "Robot/fsm.hpp"
+
+#include "gnuplot.hpp"
+
+using namespace std::literals::chrono_literals;
 
 // EtherCAT variables:
 char IOmap[4096];
 unsigned int usedmem;
-int J1ID, J2ID;
+int J1ID, J2ID, J3ID, J4ID;
 
 // FSM
 auto fsm = Robot::FSM();
 
 auto priorAbort = false;
+constexpr std::chrono::nanoseconds HALT_TIMEOUT = 1s;
+std::chrono::nanoseconds haltTimestamp = 0ns;
 void abort_handler([[maybe_unused]] int signum)
 {
     printf("\n");
@@ -38,6 +47,7 @@ void abort_handler([[maybe_unused]] int signum)
     {
         exit(255);
     }
+    haltTimestamp = std::chrono::system_clock::now().time_since_epoch();
     priorAbort = true;
 }
 
@@ -134,6 +144,9 @@ int main()
     spdlog::set_pattern("%^[%=8l]%$ %s:%# %v");
 
     signal(SIGINT, abort_handler);
+    signal(SIGTERM, abort_handler);
+    signal(SIGKILL, abort_handler);
+    signal(SIGSTOP, abort_handler);
 
     // Set realtime priority
     struct sched_param schedp;
@@ -142,6 +155,8 @@ int main()
     schedp.sched_priority = 30;
     sched_setscheduler(0, SCHED_FIFO, &schedp);
 
+    Kernel::start_low_latency();
+
     // Setup EtherCAT interface:
     if (nic_setup(const_cast<char *>("enp2s0")) == 1)
     {
@@ -149,14 +164,24 @@ int main()
         return 1;
     }
 
+    Delta::PDO J1(J1ID);
+    Delta::PDO J2(J2ID);
+    Sim::PDO J3;
+    Sim::PDO J4;
+
     // Assign slave ids and setup PDO table
-    fsm.J1 = Drive::Motor{J1ID, PPU * GEAR, PPV * GEAR, -65, 245};
-    fsm.J2 = Drive::Motor{J2ID, PPU * GEAR, PPV * GEAR, -155, 155};
+    fsm.J1 = Drive::Motor{J1ID, &J1, PPU * GEAR, PPV * GEAR, -65, 245};
+    fsm.J2 = Drive::Motor{J2ID, &J2, PPU * GEAR, PPV * GEAR, -155, 155};
+    fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -180, 180};
+    fsm.J4 = Drive::Motor{4, &J4, PPU, PPV, -3600, 3600};
     // Assign drive groups
-    fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2};
+    fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2, &fsm.J3, &fsm.J4};
 
     // Setup message bus
     auto monitor = std::thread(NC::Monitor, &fsm);
+
+    // High speed recorder
+    auto blackbox = std::thread(BB::Monitor, &fsm);
 
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
@@ -182,24 +207,34 @@ int main()
         {
             ec_send_processdata();
             wkc = ec_receive_processdata(EC_TIMEOUTRET);
-            if (wkc < expectedWKC)
+            if (fsm.estop && wkc < expectedWKC)
             {
                 spdlog::error("Working counter less than expected, perhaps a slave has died. {}<{}", wkc, expectedWKC);
                 fsm.estop = false;
             }
 
             fsm.update();
-            if (!fsm.estop && fsm.next == Robot::Idle)
+            if (!fsm.estop && (fsm.next == Robot::Idle ||
+                               (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
             {
+                spdlog::info("Halting");
+                blackbox.join();
                 monitor.join();
+
                 ec_close();
+                Kernel::stop_low_latency();
 #ifdef WITH_ADDR_SANITIZE
                 __lsan_do_leak_check();
 #endif
                 return 1;
             }
 
-            // spdlog::debug("Offset: {}nS", toff);
+            fsm.status.ethercat = {
+                .interval = int64_t(CYCLETIME),
+                .sync0 = ec_DCtime % int64_t(CYCLETIME),
+                .compensation = toff,
+                .integral = integral,
+            };
 
             // calculate toff to get linux time and DC synced
             TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
