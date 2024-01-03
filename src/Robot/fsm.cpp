@@ -12,13 +12,23 @@ void Robot::FSM::update()
     {
     default:
     case Idle:
+        if (reset)
+        {
+            Arm.faultReset();
+            needsHoming = true;
+            reset = false;
+        }
+
         if (estop && run)
         {
             diagMsgs.clear();
             diagMsgs.push_back("Entering run mode");
 
+            Arm.faultReset();
+
             next = Start;
         }
+
         if (!estop)
         {
             needsHoming = true;
@@ -38,7 +48,6 @@ void Robot::FSM::update()
         }
         break;
     case Start:
-        Arm.faultReset();
         Arm.setCommand(CANOpenCommand::ENABLE);
 
         next = Starting;

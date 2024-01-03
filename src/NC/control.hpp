@@ -69,7 +69,7 @@ namespace NC
 
             fsm->broadcastStatus(nc);
 
-            if (!fsm->estop && fsm->next == Robot::Idle)
+            if (!fsm->estop)
             {
                 run = false;
             }
@@ -83,6 +83,7 @@ namespace NC
             // Increment timespec by cycle time
             TS::Increment(tick, period);
         }
+
         natsSubscription_Unsubscribe(ctrlSub);
         natsSubscription_Unsubscribe(settingsSub);
         natsSubscription_Destroy(ctrlSub);

@@ -39,6 +39,7 @@ namespace Robot
       public:
         bool run;
         bool estop = true;
+        bool reset = false;
         bool needsHoming = false;
         bool trackAfterHoming = true;
         bool inSync;

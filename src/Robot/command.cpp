@@ -29,7 +29,7 @@ void Robot::FSM::receiveCommand([[maybe_unused]] natsConnection *nc, [[maybe_unu
         }
         if (command.compare("reset") == 0)
         {
-            needsHoming = true;
+            reset = true;
             if (!run)
             {
                 next = Robot::Idle;
