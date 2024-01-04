@@ -1,18 +1,23 @@
 #include "delta.hpp"
 
+//! @brief Configure EtherCAT device
+//!
+//! This function configures the EtherCAT device and sets up the SDO parameters, sync manager and PDOs.
+//! @param slave Slave ID
+//! @return 0 on success, -1 on failure
 int Delta::PO2SOconfig(uint16_t slave)
 {
     auto wkc = 0;
 
     // Set interpolation values
-    uint8_t interpolationPeriod = 2;
-    int8_t ratio = -3;
+    uint8_t interpolationPeriod = 2; // ms
+    int8_t ratio = -3;               // See manual for details
     wkc += ec_SDOwrite(slave, 0x60C2, 1, FALSE, sizeof(interpolationPeriod), &interpolationPeriod, EC_TIMEOUTRXM);
     wkc += ec_SDOwrite(slave, 0x60C2, 2, FALSE, sizeof(ratio), &ratio, EC_TIMEOUTRXM);
 
     // Set homing mode
     uint8_t homingMode = 34; // Got to z index
-    uint32_t accel = 100;    // Speed
+    uint32_t accel = 100;    // Speed in rpm
     wkc += ec_SDOwrite(slave, 0x6098, 0, FALSE, sizeof(homingMode), &homingMode, EC_TIMEOUTRXM);
     wkc += ec_SDOwrite(slave, 0x6099, 1, FALSE, sizeof(accel), &accel, EC_TIMEOUTRXM);
     wkc += ec_SDOwrite(slave, 0x6099, 2, FALSE, sizeof(accel), &accel, EC_TIMEOUTRXM);

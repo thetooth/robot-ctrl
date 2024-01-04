@@ -17,6 +17,9 @@ namespace TS
     static const int NSEC_PER_SECOND = 1e+9;
     static const int USEC_PER_SECOND = 1e+6;
 
+    //! @brief Calculate DC sync offset
+    //!
+    //! This function uses a simple PI controller to try and align the Linux clock with the DC sync0 event.
     [[maybe_unused]] static void DCSync(int64_t reftime, int64_t cycletime, int64_t *integral, int64_t *offsettime)
     {
         /* set linux sync point 500us later than DC sync, just as example */
@@ -33,9 +36,12 @@ namespace TS
         {
             (*integral)--;
         }
-        *offsettime = -(delta / 100) - (*integral / 200); // Original 100 / 20
+        *offsettime = -(delta / 100) - (*integral / 20); // Original 100 / 20
     }
 
+    //! @brief Calculate DC sync offset
+    //!
+    //! This function applies the offset calculated by DCSync to the timespec struct.
     [[maybe_unused]] static void ApplyOffset(struct timespec *ts, int64 addtime)
     {
         int64 sec, nsec;
@@ -52,6 +58,10 @@ namespace TS
         }
     }
 
+    //! @brief Increment timespec by nsec
+    //!
+    //! This function increments the timespec struct by nsec. If the value exceeds 1 second, the seconds value is
+    //! incremented.
     [[maybe_unused]] static void Increment(struct timespec &tick, int64_t nsec)
     {
         tick.tv_nsec += nsec;

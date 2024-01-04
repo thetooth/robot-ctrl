@@ -38,6 +38,11 @@ auto fsm = Robot::FSM();
 auto priorAbort = false;
 constexpr std::chrono::nanoseconds HALT_TIMEOUT = 1s;
 std::chrono::nanoseconds haltTimestamp = 0ns;
+
+//! @brief Abort handler
+//!
+//! This function is called when the program receives a SIGINT signal. It sets the estop flag to false
+//! and forcibly terminates the program if a prior attempt was already made.
 void abort_handler([[maybe_unused]] int signum)
 {
     printf("\n");
@@ -51,6 +56,13 @@ void abort_handler([[maybe_unused]] int signum)
     priorAbort = true;
 }
 
+//! @brief Setup EtherCAT interface
+//!
+//! This function initializes the EtherCAT network interface and configures the slaves.
+//! It also sets up the DC sync0 event and starts the DC timer.
+//!
+//! @param ifname The name of the network interface to bind to
+//! @return 0 on success, 1 on failure
 int nic_setup(char *ifname)
 {
     // Initialize SOEM, bind socket to ifname
@@ -164,6 +176,18 @@ int main()
         return 1;
     }
 
+    // Check if all slaves to reach OP state
+    if (ec_slave[0].state == EC_STATE_OPERATIONAL)
+    {
+        spdlog::info("Operational state reached for all slaves.");
+    }
+    else
+    {
+        spdlog::critical("Not all slaves reached operational state.");
+        return 1;
+    }
+
+    // Setup drive PDO objects
     Delta::PDO J1(J1ID);
     Delta::PDO J2(J2ID);
     Sim::PDO J3;
@@ -172,7 +196,7 @@ int main()
     // Assign slave ids and setup PDO table
     fsm.J1 = Drive::Motor{J1ID, &J1, PPU * GEAR, PPV * GEAR, -65, 245};
     fsm.J2 = Drive::Motor{J2ID, &J2, PPU * GEAR, PPV * GEAR, -155, 155};
-    fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -180, 180};
+    fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -360, 360};
     fsm.J4 = Drive::Motor{4, &J4, PPU, PPV, -3600, 3600};
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2, &fsm.J3, &fsm.J4};
@@ -183,68 +207,63 @@ int main()
     // High speed recorder
     auto blackbox = std::thread(BB::Monitor, &fsm);
 
-    if (ec_slave[0].state == EC_STATE_OPERATIONAL)
+    // Working counter
+    auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
+    auto wkc = 0;
+    spdlog::debug("Expected WKC {}", expectedWKC);
+
+    fsm.Arm.setTorqueLimit(10);
+    fsm.Arm.setFollowingWindow(300);
+
+    // Timing
+    struct timespec tick;
+    int64_t toff = 0;
+    int64_t integral = 0;
+    clock_gettime(CLOCK_MONOTONIC, &tick);
+    TS::Increment(tick, CYCLETIME);
+
+    // Cyclic loop
+    while (true)
     {
-        spdlog::info("Operational state reached for all slaves.");
-
-        // Working counter
-        auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
-        auto wkc = 0;
-        spdlog::debug("Expected WKC {}", expectedWKC);
-
-        fsm.Arm.setTorqueLimit(10);
-        fsm.Arm.setFollowingWindow(300);
-
-        // Timing
-        struct timespec tick;
-        int64_t toff = 0;
-        int64_t integral = 0;
-        clock_gettime(CLOCK_MONOTONIC, &tick);
-        TS::Increment(tick, CYCLETIME);
-
-        // Cyclic loop
-        while (true)
+        ec_send_processdata();
+        wkc = ec_receive_processdata(EC_TIMEOUTRET);
+        if (fsm.estop && wkc < expectedWKC)
         {
-            ec_send_processdata();
-            wkc = ec_receive_processdata(EC_TIMEOUTRET);
-            if (fsm.estop && wkc < expectedWKC)
-            {
-                spdlog::error("Working counter less than expected, perhaps a slave has died. {}<{}", wkc, expectedWKC);
-                fsm.estop = false;
-            }
-
-            fsm.update();
-            if (!fsm.estop && (fsm.next == Robot::Idle ||
-                               (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
-            {
-                spdlog::info("Halting");
-                blackbox.join();
-                monitor.join();
-
-                ec_close();
-                Kernel::stop_low_latency();
-#ifdef WITH_ADDR_SANITIZE
-                __lsan_do_leak_check();
-#endif
-                return 1;
-            }
-
-            fsm.status.ethercat = {
-                .interval = int64_t(CYCLETIME),
-                .sync0 = ec_DCtime % int64_t(CYCLETIME),
-                .compensation = toff,
-                .integral = integral,
-            };
-
-            // calculate toff to get linux time and DC synced
-            TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
-            // Apply offset to timespec
-            TS::ApplyOffset(&tick, toff);
-            // Monotonic sleep
-            clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tick, NULL);
-            // Increment timespec by cycle time
-            TS::Increment(tick, CYCLETIME);
+            spdlog::error("Working counter less than expected, perhaps a slave has died. {}<{}", wkc, expectedWKC);
+            fsm.estop = false;
         }
+
+        fsm.update();
+        if (!fsm.estop && (fsm.next == Robot::Idle ||
+                           (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
+        {
+            spdlog::info("Halting");
+            blackbox.join();
+            monitor.join();
+
+            ec_close();
+            Kernel::stop_low_latency();
+#ifdef WITH_ADDR_SANITIZE
+            __lsan_do_leak_check();
+#endif
+            return 1;
+        }
+
+        fsm.status.ethercat = {
+            .interval = int64_t(CYCLETIME),
+            .sync0 = ec_DCtime % int64_t(CYCLETIME),
+            .compensation = toff,
+            .integral = integral,
+        };
+
+        // calculate toff to get linux time and DC synced
+        TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
+        // Apply offset to timespec
+        TS::ApplyOffset(&tick, toff);
+        // Monotonic sleep
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tick, NULL);
+        // Increment timespec by cycle time
+        TS::Increment(tick, CYCLETIME);
     }
 
     return 0;
