@@ -2,7 +2,7 @@
 
 // Forward kinematics
 // Returns x, y, z, r in cartesian coordinates
-std::tuple<double, double, double, double> IK::forwardKinematics(double alpha, double beta, double phi, double theta)
+std::tuple<double, double, double, double> IK::forwardKinematics(double alpha, double beta, double theta, double phi)
 {
     double alphaF = alpha * M_PI / 180; // degrees to radians
     double betaF = beta * M_PI / 180;
@@ -17,8 +17,9 @@ std::tuple<double, double, double, double> IK::forwardKinematics(double alpha, d
 
 // Inverse kinematics
 // Returns alpha, beta, phi, theta in joint space
-std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x, double y, double z, double r)
+std::tuple<double, double, double, double, IK::Result> IK::inverseKinematics(double x, double y, double z, double r)
 {
+    IK::Result result = IK::Result::Success;
     double alpha, beta, phi, theta = 0;
 
     beta = acos((pow(x, 2.0) + pow(y, 2.0) - pow(L1, 2.0) - pow(L2, 2.0)) / (2 * L1 * L2));
@@ -35,7 +36,7 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     // Somethings not right...
     if (isnan(alpha) || isnan(beta))
     {
-        return {alpha, beta, phi, theta, false};
+        return {alpha, beta, phi, theta, IK::Result::Singularity};
     }
 
     const auto maxAngle = 150.0;
@@ -52,6 +53,10 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     if (x < 0 && y < 0)
     { // 3rd quadrant
         alpha = 270 - alpha;
+        if (beta > maxAngle)
+        {
+            result = IK::Result::JointLimit;
+        }
         beta = std::min(maxAngle, beta); // Prevent elbow under collision with J1 (radius)
     }
     if (x >= 0 && y < 0)
@@ -64,8 +69,16 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     }
 
     // Prevent elbow under collision with base during transition between 2nd and 3rd quadrant
+    if (alpha > 270 - 30.0)
+    {
+        result = IK::Result::JointLimit;
+    }
     alpha = std::min(270 - 30.0, alpha);
     // Prevent elbow over collision with J1 (radius)
+    if (beta < -maxAngle)
+    {
+        result = IK::Result::JointLimit;
+    }
     beta = std::max(-maxAngle, beta);
 
     // Calculate "phi" angle so gripper is parallel to the X axis
@@ -75,29 +88,35 @@ std::tuple<double, double, double, double, bool> IK::inverseKinematics(double x,
     // Calculate "theta" angle so that the gripper is at the correct height during rotation
     theta = phi + z / ScrewPitch;
 
-    return {alpha, beta, phi, theta, true};
+    return {alpha, beta, theta, phi, result};
 }
 
-std::tuple<double, double, double, double, bool> IK::preprocessing(double x, double y, double z, double r)
+std::tuple<double, double, double, double, IK::Result> IK::preprocessing(double x, double y, double z, double r)
 {
     const auto baseKeepOut = 100.0;
-    auto ok = true;
+    IK::Result result = IK::Result::Success;
 
     // Prevent placing the tool directly behind the base
     if (x < 0 && y <= 0)
     { // 3rd quadrant
+        if (x > -baseKeepOut)
+        {
+            result = IK::Result::JointLimit;
+        }
         x = std::min(x, -baseKeepOut);
-        ok = x < -baseKeepOut;
     }
     if (x >= 0 && y <= 0)
     { // 4th quadrant
+        if (x < baseKeepOut)
+        {
+            result = IK::Result::JointLimit;
+        }
         x = std::max(x, baseKeepOut);
-        ok = x > baseKeepOut;
     }
     z = std::max(z, 0.0);
     r = std::min(std::max(r, -180.0), 180.0);
 
-    return {x, y, z, r, ok};
+    return {x, y, z, r, result};
 }
 
 void IK::to_json(json &j, const Pose &p)
