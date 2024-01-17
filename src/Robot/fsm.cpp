@@ -14,19 +14,15 @@ void Robot::FSM::update()
     case Idle:
         if (reset)
         {
-            Arm.faultReset();
-            needsHoming = true;
             reset = false;
+            needsHoming = true;
+            next = Reset;
         }
 
         if (estop && run)
         {
-            diagMsgs.clear();
-            diagMsgs.push_back("Entering run mode");
-
-            Arm.faultReset();
-
-            next = Start;
+            eventLog.Info("Entering run mode");
+            next = Reset;
         }
 
         if (!estop)
@@ -34,6 +30,38 @@ void Robot::FSM::update()
             needsHoming = true;
             next = Halt;
         }
+        break;
+    case Reset:
+        Arm.faultReset();
+
+        {
+            auto pendingErrorCode = false;
+            for (auto &&drive : Arm.drives)
+            {
+                if (drive->getErrorCode() != 0)
+                {
+                    auto msg =
+                        fmt::format("Drive {} has pending error code {:#x}", drive->slaveID, drive->getErrorCode());
+                    eventLog.Warning(msg);
+                    pendingErrorCode = true;
+                }
+            }
+
+            if (!pendingErrorCode)
+            {
+                eventLog.Info("Fault reset complete");
+
+                if (run)
+                {
+                    next = Start;
+                }
+                else
+                {
+                    next = Idle;
+                }
+            }
+        }
+
         break;
     case Halt:
         Arm.setModeOfOperation(CANOpen::control::mode::NO_MODE);
@@ -57,12 +85,12 @@ void Robot::FSM::update()
         {
             if (needsHoming)
             {
-                diagMsgs.push_back("Entered ON state, enter homing");
+                eventLog.Info("Entered ON state, enter homing");
                 next = Home;
             }
             else
             {
-                diagMsgs.push_back("Entered ON state, enter tracking");
+                eventLog.Info("Entered ON state, enter tracking");
                 next = Track;
             }
         }
@@ -83,19 +111,10 @@ void Robot::FSM::update()
             J1.compareState(CANOpenState::HOMING_COMPLETE) && J2.compareState(CANOpenState::HOMING_COMPLETE);
         if (homingResult)
         {
-            diagMsgs.push_back("Homing complete");
+            eventLog.Info("Homing complete");
             needsHoming = false;
-            if (trackAfterHoming)
-            {
-                diagMsgs.push_back("Enter tracking");
-                next = Track;
-            }
-            else
-            {
-                diagMsgs.push_back("Enter Halt");
-                run = false;
-                next = Halt;
-            }
+            run = false;
+            next = Halt;
         }
         if (!estop || !run)
         {
@@ -111,8 +130,8 @@ void Robot::FSM::update()
         auto trackingResult = tracking();
         if (!estop || !run || trackingResult)
         {
-            diagMsgs.push_back("Tracking interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run) +
-                               " Tracking: " + std::to_string(trackingResult));
+            eventLog.Info("Tracking interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run) +
+                          " Tracking: " + std::to_string(trackingResult));
             inSync = false;
             next = Halt;
         }
@@ -125,7 +144,7 @@ void Robot::FSM::update()
     case Pathing:
         if (!estop || !run)
         {
-            diagMsgs.push_back("Pathing interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
+            eventLog.Info("Pathing interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
             next = Halt;
         }
     }

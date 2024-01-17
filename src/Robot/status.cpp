@@ -2,7 +2,7 @@
 
 void Robot::to_json(json &j, const OTGStatus &p)
 {
-    j = json{{"result", p.result}};
+    j = json{{"result", p.result}, {"kinematicResult", p.kinematicResult}};
 }
 
 void Robot::to_json(json &j, const EtherCATStatus &p)
@@ -13,8 +13,9 @@ void Robot::to_json(json &j, const EtherCATStatus &p)
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
-        {"run", p.run},           {"alarm", p.alarm},   {"state", p.state},     {"otg", p.otg},
-        {"ethercat", p.ethercat}, {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
+        {"run", p.run},       {"alarm", p.alarm},     {"needsHoming", p.needsHoming},
+        {"state", p.state},   {"otg", p.otg},         {"ethercat", p.ethercat},
+        {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
     };
 }
 
@@ -32,10 +33,17 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         alarm = true;
     }
 
-    auto diagStr = std::string("");
-    for (auto msg : diagMsgs)
+    for (auto event : eventLog)
     {
-        diagStr.append(msg + "\n");
+        json j = event;
+        auto payload = j.dump();
+        auto ncStatus = natsConnection_Publish(nc, "motion.event", payload.c_str(), payload.length());
+        if (ncStatus != NATS_OK)
+        {
+            spdlog::error("Failed to broadcast event: {}", natsStatus_GetText(ncStatus));
+            continue;
+        }
+        eventLog.pop_front();
     }
 
     auto [dx, dy, dz, dr] =
@@ -44,7 +52,8 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
     status.run = run;
     status.alarm = alarm;
     status.state = to_string();
-    status.diagMsg = diagStr;
+    status.needsHoming = needsHoming;
+    // status.diagMsg = diagStr;
     status.pose = IK::Pose{
         .x = dx,
         .y = dy,
@@ -52,12 +61,12 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         .r = dr,
         .alpha = J1.getPosition(),
         .beta = J2.getPosition(),
-        .phi = J3.getPosition(),
-        .theta = J4.getPosition(),
+        .theta = J3.getPosition(),
+        .phi = J4.getPosition(),
         .alphaVelocity = J1.getVelocity(),
         .betaVelocity = J2.getVelocity(),
-        .phiVelocity = input.current_velocity[2],
-        .thetaVelocity = input.current_velocity[3],
+        .thetaVelocity = input.current_velocity[2],
+        .phiVelocity = input.current_velocity[3],
     };
     status.drives = {J1, J2, J3, J4};
 

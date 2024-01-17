@@ -8,6 +8,10 @@ void Robot::FSM::receiveCommand([[maybe_unused]] natsConnection *nc, [[maybe_unu
         auto payload = json::parse(natsMsg_GetData(msg));
         auto command = payload["command"].template get<std::string>();
 
+        if (command.compare("stop") == 0)
+        {
+            run = false;
+        }
         if (command.compare("start") == 0 && estop)
         {
             run = true;
@@ -35,9 +39,14 @@ void Robot::FSM::receiveCommand([[maybe_unused]] natsConnection *nc, [[maybe_unu
                 next = Robot::Idle;
             }
         }
-        if (command.compare("stop") == 0)
+        if (command.compare("home") == 0)
         {
-            run = false;
+            needsHoming = true;
+            run = true;
+        }
+        if (command.compare("hotStart") == 0)
+        {
+            needsHoming = false;
         }
     }
     catch (const json::parse_error &e)

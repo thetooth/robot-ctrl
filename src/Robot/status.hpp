@@ -12,6 +12,7 @@ namespace Robot
     struct OTGStatus
     {
         ruckig::Result result;
+        IK::Result kinematicResult;
     };
     void to_json(json &j, const OTGStatus &p);
 
@@ -28,6 +29,7 @@ namespace Robot
     {
         bool run;
         bool alarm;
+        bool needsHoming;
         std::string state;
         OTGStatus otg;
         EtherCATStatus ethercat;

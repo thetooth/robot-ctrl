@@ -11,6 +11,7 @@
 #include "../common.hpp"
 #include "Drive/group.hpp"
 #include "IK/scara.hpp"
+#include "event.hpp"
 #include "settings.hpp"
 #include "status.hpp"
 
@@ -22,6 +23,7 @@ namespace Robot
     enum State
     {
         Idle,
+        Reset,
         Halt,
         Halting,
         Start,
@@ -40,12 +42,11 @@ namespace Robot
         bool run;
         bool estop = true;
         bool reset = false;
-        bool needsHoming = false;
-        bool trackAfterHoming = true;
+        bool needsHoming = true;
         bool inSync;
 
         State next = Idle;
-        std::deque<std::string> diagMsgs = {};
+        EventLog eventLog = {};
 
         Drive::Motor J1;
         Drive::Motor J2;
@@ -66,12 +67,12 @@ namespace Robot
             .r = 0,
             .alpha = 0,
             .beta = 0,
-            .phi = 0,
             .theta = 0,
+            .phi = 0,
             .alphaVelocity = 0,
             .betaVelocity = 0,
-            .phiVelocity = 0,
             .thetaVelocity = 0,
+            .phiVelocity = 0,
         };
         // Waypoints
         std::vector<IK::Pose> waypoints;
@@ -94,6 +95,8 @@ namespace Robot
             input.target_position = {0.0, 0.0, 0.0, 0.0};
             input.target_velocity = {0.0, 0.0, 0.0, 0.0};
             input.synchronization = Synchronization::Phase;
+
+            eventLog.Info("FSM initialized");
         }
 
         void update();

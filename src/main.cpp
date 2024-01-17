@@ -196,8 +196,8 @@ int main()
     // Assign slave ids and setup PDO table
     fsm.J1 = Drive::Motor{J1ID, &J1, PPU * GEAR, PPV * GEAR, -65, 245};
     fsm.J2 = Drive::Motor{J2ID, &J2, PPU * GEAR, PPV * GEAR, -155, 155};
-    fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -360, 360};
-    fsm.J4 = Drive::Motor{4, &J4, PPU, PPV, -3600, 3600};
+    fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -3600, 3600};
+    fsm.J4 = Drive::Motor{4, &J4, PPU, PPV, -360, 360};
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2, &fsm.J3, &fsm.J4};
 

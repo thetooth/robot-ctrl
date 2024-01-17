@@ -20,7 +20,7 @@ void Drive::Motor::update()
     auto errorCode = pdo->getErrorCode();
     if (errorCode != 0 && !fault)
     {
-        lastFault = fmt::format("Drive {} error code {}", slaveID, errorCode);
+        lastFault = fmt::format("Drive {} error code {:#x}", slaveID, errorCode);
         spdlog::error(lastFault);
         fault = true;
     }
@@ -49,14 +49,12 @@ bool Drive::Motor::move(double target)
     {
         fault = true;
         lastFault = fmt::format("Target deviation", target, current);
-        spdlog::error(lastFault);
         return fault;
     }
     if (target < minPosition || target > maxPosition)
     {
         fault = true;
         lastFault = fmt::format("Outside soft limits", target);
-        spdlog::error(lastFault);
         return fault;
     }
     pdo->setTargetPosition(target * positionRatio);
