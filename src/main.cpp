@@ -212,7 +212,8 @@ int main()
     auto wkc = 0;
     spdlog::debug("Expected WKC {}", expectedWKC);
 
-    fsm.Arm.setTorqueLimit(10);
+    fsm.Arm.setTorqueLimit(20);
+    fsm.Arm.setTorqueThreshold(15);
     fsm.Arm.setFollowingWindow(300);
 
     // Timing
