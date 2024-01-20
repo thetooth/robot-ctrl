@@ -34,9 +34,11 @@ namespace Robot
         } level;
         std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> time;
         std::string message;
+        json detail;
 
-        Event(Level level, std::string message)
-            : id(generate_uuid()), level(level), time(std::chrono::system_clock::now()), message(message)
+        Event(Level level, std::string message, json detail = nullptr)
+            : id(generate_uuid()), level(level), time(std::chrono::system_clock::now()), message(message),
+              detail(detail)
         {
         }
 
@@ -52,30 +54,30 @@ namespace Robot
         {
         }
 
-        void Debug(std::string message)
+        void Debug(std::string message, json detail = nullptr)
         {
             spdlog::debug(message);
-            push_back(Event(Event::Level::Debug, message));
+            push_back(Event(Event::Level::Debug, message, detail));
         }
-        void Info(std::string message)
+        void Info(std::string message, json detail = nullptr)
         {
             spdlog::info(message);
-            push_back(Event(Event::Level::Info, message));
+            push_back(Event(Event::Level::Info, message, detail));
         }
-        void Warning(std::string message)
+        void Warning(std::string message, json detail = nullptr)
         {
             spdlog::warn(message);
-            push_back(Event(Event::Level::Warning, message));
+            push_back(Event(Event::Level::Warning, message, detail));
         }
-        void Error(std::string message)
+        void Error(std::string message, json detail = nullptr)
         {
             spdlog::error(message);
-            push_back(Event(Event::Level::Error, message));
+            push_back(Event(Event::Level::Error, message, detail));
         }
-        void Critical(std::string message)
+        void Critical(std::string message, json detail = nullptr)
         {
             spdlog::critical(message);
-            push_back(Event(Event::Level::Critical, message));
+            push_back(Event(Event::Level::Critical, message, detail));
         }
         void Kinematic(std::string message)
         {

@@ -49,7 +49,7 @@ void Robot::FSM::update()
 
             if (!pendingErrorCode)
             {
-                eventLog.Info("Fault reset complete");
+                eventLog.Debug("Fault reset complete");
 
                 if (run)
                 {
@@ -85,12 +85,12 @@ void Robot::FSM::update()
         {
             if (needsHoming)
             {
-                eventLog.Info("Entered ON state, enter homing");
+                eventLog.Debug("Entered ON state, enter homing");
                 next = Home;
             }
             else
             {
-                eventLog.Info("Entered ON state, enter tracking");
+                eventLog.Debug("Entered ON state, enter tracking");
                 next = Track;
             }
         }
@@ -111,7 +111,7 @@ void Robot::FSM::update()
             J1.compareState(CANOpenState::HOMING_COMPLETE) && J2.compareState(CANOpenState::HOMING_COMPLETE);
         if (homingResult)
         {
-            eventLog.Info("Homing complete");
+            eventLog.Debug("Homing complete");
             needsHoming = false;
             run = false;
             next = Halt;
@@ -130,8 +130,11 @@ void Robot::FSM::update()
         auto trackingResult = tracking();
         if (!estop || !run || trackingResult)
         {
-            eventLog.Info("Tracking interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run) +
-                          " Tracking: " + std::to_string(trackingResult));
+            eventLog.Warning("Tracking interrupted", {
+                                                         {"estop", estop},
+                                                         {"run", run},
+                                                         {"tracking", trackingResult},
+                                                     });
             inSync = false;
             next = Halt;
         }
@@ -144,7 +147,7 @@ void Robot::FSM::update()
     case Pathing:
         if (!estop || !run)
         {
-            eventLog.Info("Pathing interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
+            eventLog.Warning("Pathing interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
             next = Halt;
         }
     }
@@ -175,4 +178,27 @@ std::string Robot::FSM::to_string() const
     default:
         return "[Unknown State]";
     }
+}
+
+std::string Robot::FSM::dump() const
+{
+    std::vector<std::string> lines;
+    auto [fx, fy, fz, fr, preResult] = IK::preprocessing(target.x, target.y, target.z, target.r);
+    auto [alpha, beta, theta, phi, ikResult] = IK::inverseKinematics(fx, fy, fz, fr);
+    lines.push_back("Preprocessing result: " + std::to_string(preResult));
+    lines.push_back("Inverse kinematics result: " + std::to_string(ikResult));
+    lines.push_back("Target position: " + std::to_string(target.x) + " " + std::to_string(target.y) + " " +
+                    std::to_string(target.z) + " " + std::to_string(target.r));
+    lines.push_back("Preprocessed position: " + std::to_string(fx) + " " + std::to_string(fy) + " " +
+                    std::to_string(fz) + " " + std::to_string(fr));
+    lines.push_back("Inverse kinematics position: " + std::to_string(alpha) + " " + std::to_string(beta) + " " +
+                    std::to_string(phi) + " " + std::to_string(theta));
+    lines.push_back("Current position: " + std::to_string(J1.getPosition()) + " " + std::to_string(J2.getPosition()) +
+                    " " + std::to_string(J3.getPosition()) + " " + std::to_string(J4.getPosition()));
+    lines.push_back("Current velocity: " + std::to_string(J1.getVelocity()) + " " + std::to_string(J2.getVelocity()) +
+                    " " + std::to_string(J3.getVelocity()) + " " + std::to_string(J4.getVelocity()));
+    lines.push_back("Current torque: " + std::to_string(J1.getTorque()) + " " + std::to_string(J2.getTorque()) + " " +
+                    std::to_string(J3.getTorque()) + " " + std::to_string(J4.getTorque()));
+
+    return fmt::format("{}", fmt::join(lines, "\n"));
 }

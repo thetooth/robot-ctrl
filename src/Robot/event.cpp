@@ -26,6 +26,10 @@ std::string Robot::Event::levelToString() const
 void Robot::to_json(json &j, const Event &e)
 {
     j = json{{"id", e.id}, {"level", e.levelToString()}, {"time", get_timestamp()}, {"msg", e.message}};
+    if (!e.detail.is_null())
+    {
+        j["detail"] = e.detail;
+    }
 }
 
 int64_t Robot::get_timestamp()
