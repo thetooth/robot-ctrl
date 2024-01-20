@@ -36,6 +36,16 @@ int Drive::Group::setTorqueLimit(double value)
     return wkc;
 }
 
+int Drive::Group::setTorqueThreshold(double value)
+{
+    auto wkc = 0;
+    for (auto &&drive : drives)
+    {
+        wkc += drive->setTorqueThreshold(value);
+    }
+    return wkc;
+}
+
 int Drive::Group::setFollowingWindow(double value)
 {
     auto wkc = 0;

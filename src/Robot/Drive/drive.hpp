@@ -22,6 +22,7 @@ namespace Drive
         PDO *pdo;
         double positionRatio, velocityRatio;
         double minPosition, maxPosition;
+        double torqueThreshold;
         bool fault;
         std::string lastFault = "OK";
 
@@ -31,7 +32,7 @@ namespace Drive
         }
         Motor(int id, PDO *pdoImpl, double positionRatio, double velocityRatio, double minimum, double maximum)
             : slaveID(id), pdo(pdoImpl), positionRatio(positionRatio), velocityRatio(velocityRatio),
-              minPosition(minimum), maxPosition(maximum), fault(false)
+              minPosition(minimum), maxPosition(maximum), torqueThreshold(100), fault(false)
         {
         }
         void update();
@@ -44,6 +45,7 @@ namespace Drive
         int setModeOfOperation(CANOpen::control::mode value);
         int setHomingOffset(int32_t value);
         int setTorqueLimit(double value);
+        int setTorqueThreshold(double value);
         int setFollowingWindow(double value);
         int faultReset();
     };

@@ -57,6 +57,12 @@ bool Drive::Motor::move(double target)
         lastFault = fmt::format("Outside soft limits", target);
         return fault;
     }
+    if (std::abs(getTorque()) > torqueThreshold)
+    {
+        fault = true;
+        lastFault = fmt::format("Torque threshold exceeded: {}%", getTorque());
+        return fault;
+    }
     pdo->setTargetPosition(target * positionRatio);
     return fault;
 }
@@ -141,6 +147,14 @@ int Drive::Motor::setTorqueLimit(double value)
     value = std::max(std::min(value, 100.0), 0.0);
     auto final = uint16_t(value * 10);
     return ec_SDOwrite(slaveID, 0x6072, 0, FALSE, sizeof(final), &final, EC_TIMEOUTRXM);
+}
+
+//! @brief Set the torque threshold for the drive in %
+int Drive::Motor::setTorqueThreshold(double value)
+{
+    value = std::max(std::min(value, 100.0), 0.0);
+    torqueThreshold = value;
+    return 0;
 }
 
 //! @brief Set the following window for the drive in degrees, outside of this window AL009
