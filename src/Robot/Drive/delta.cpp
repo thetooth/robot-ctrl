@@ -16,8 +16,8 @@ int Delta::PO2SOconfig(uint16_t slave)
     wkc += ec_SDOwrite(slave, 0x60C2, 2, FALSE, sizeof(ratio), &ratio, EC_TIMEOUTRXM);
 
     // Set homing mode
-    uint8_t homingMode = 34; // Got to z index
-    uint32_t accel = 100;    // Speed in rpm
+    uint8_t homingMode = 34;  // Got to z index
+    uint32_t accel = 10 * 10; // Speed in rpm
     wkc += ec_SDOwrite(slave, 0x6098, 0, FALSE, sizeof(homingMode), &homingMode, EC_TIMEOUTRXM);
     wkc += ec_SDOwrite(slave, 0x6099, 1, FALSE, sizeof(accel), &accel, EC_TIMEOUTRXM);
     wkc += ec_SDOwrite(slave, 0x6099, 2, FALSE, sizeof(accel), &accel, EC_TIMEOUTRXM);
