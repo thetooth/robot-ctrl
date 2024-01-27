@@ -8,7 +8,7 @@
 #include "oshw.h"
 #include "pdo.hpp"
 
-// import Leadshine;
+#include <deque>
 
 namespace Drive
 {
@@ -25,6 +25,7 @@ namespace Drive
         double torqueThreshold;
         bool fault;
         std::string lastFault = "OK";
+        std::deque<double> torqueHistory = {};
 
         Motor()
         {

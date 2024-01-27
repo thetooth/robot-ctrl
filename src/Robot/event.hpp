@@ -79,9 +79,9 @@ namespace Robot
             spdlog::critical(message);
             push_back(Event(Event::Level::Critical, message, detail));
         }
-        void Kinematic(std::string message)
+        void Kinematic(std::string message, json detail = nullptr)
         {
-            push_back(Event(Event::Level::Kinematic, message));
+            push_back(Event(Event::Level::Kinematic, message, detail));
         }
         void EtherCAT(std::string message)
         {

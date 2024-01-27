@@ -148,3 +148,18 @@ void IK::from_json(const json &j, Pose &p)
     p.phi = j.value("phi", 0.0);
     p.theta = j.value("theta", 0.0);
 }
+
+std::string IK::resultToString(IK::Result result)
+{
+    switch (result)
+    {
+    case IK::Result::Success:
+        return "Success";
+    case IK::Result::JointLimit:
+        return "Joint Limit";
+    case IK::Result::Singularity:
+        return "Singularity";
+    default:
+        return "Unknown";
+    }
+}

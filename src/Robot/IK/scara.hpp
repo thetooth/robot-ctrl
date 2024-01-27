@@ -20,6 +20,7 @@ namespace IK
         JointLimit,
         Singularity,
     };
+    std::string resultToString(Result result);
 
     std::tuple<double, double, double, double> forwardKinematics(double alpha, double beta, double theta, double phi);
     std::tuple<double, double, double, double, Result> inverseKinematics(double x, double y, double z, double r);

@@ -20,17 +20,20 @@ bool Robot::FSM::tracking()
         input.current_acceleration = {0.0, 0.0};
         otg.reset();
 
-        eventLog.Debug("Resync OTG to actual position");
+        eventLog.Kinematic("Resync OTG to actual position");
         inSync = true;
     }
 
     auto [fx, fy, fz, fr, preResult] = IK::preprocessing(target.x, target.y, target.z, target.r);
     status.otg.kinematicResult = preResult;
+    if (preResult == IK::Result::JointLimit && !KinematicAlarm)
+    {
+        eventLog.Kinematic("Joint limit exceeded during preprocessing", dump());
+    }
 
     auto [alpha, beta, theta, phi, ikResult] = IK::inverseKinematics(fx, fy, fz, fr);
     status.otg.kinematicResult = (preResult != IK::Result::Success ? preResult : ikResult);
 
-    KinematicAlarm = preResult != IK::Result::Success || ikResult != IK::Result::Success;
     if (ikResult != IK::Result::Singularity)
     {
         input.target_position[0] = alpha;
@@ -38,18 +41,26 @@ bool Robot::FSM::tracking()
         input.target_position[2] = theta;
         input.target_position[3] = phi;
     }
+    if (ikResult == IK::Result::JointLimit && !KinematicAlarm)
+    {
+        eventLog.Kinematic("Joint limit exceeded during kinematic step", dump());
+    }
+    if (ikResult == IK::Result::Singularity && !KinematicAlarm)
+    {
+        eventLog.Kinematic("Singularity detected", dump());
+    }
+    KinematicAlarm = preResult != IK::Result::Success || ikResult != IK::Result::Success;
 
     status.otg.result = otg.update(input, output);
     auto &p = output.new_position;
 
     if (J1.move(p[0]) || J2.move(p[1]) || J3.move(p[2]) || J4.move(p[3]))
     {
-        eventLog.Error("Drive fault occurred, stopping");
         for (auto &&drive : Arm.drives)
         {
             if (drive->fault)
             {
-                eventLog.Error("J" + std::to_string(drive->slaveID) + ": " + drive->lastFault, dump());
+                eventLog.Error("J" + std::to_string(drive->slaveID) + " " + drive->lastFault, dump());
             }
         }
         run = false;
@@ -58,8 +69,6 @@ bool Robot::FSM::tracking()
 
     // Set input parameters
     output.pass_to_input(input);
-    // spdlog::trace("position: {:03.2f} {:03.2f} {:03.2f} {:03.2f}", alpha, beta, p[0], p[1]);
-    // spdlog::debug("deg/s {} {}", J1.getVelocity(), J2.getVelocity());
 
     return false;
 }

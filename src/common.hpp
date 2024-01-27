@@ -79,12 +79,40 @@ namespace Kernel
 
     [[maybe_unused]] static void start_low_latency(void)
     {
-        int32_t target = 0;
+        // Set realtime priority
+        struct sched_param schedularParam;
+        memset(&schedularParam, 0, sizeof(schedularParam));
+        // Do not set priority above 49, otherwise sockets are starved
+        schedularParam.sched_priority = 30;
+        if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
+        {
+            spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
+            exit(errno);
+        }
 
+        // Set CPU affinity
+        cpu_set_t cpuSet;
+        CPU_ZERO(&cpuSet);
+        // Use both isolated cores of Intel Atom x7425E as they share a single L2 cache,
+        // the cache miss leads to large clock skew when the other core performs a load
+        // from main memory, or enters a low power state.
+        CPU_SET(2, &cpuSet);
+        // CPU_SET(3, &cpuSet);
+        if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
+        {
+            spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
+            exit(errno);
+        }
+
+        // Check if cpu_dma_latency file is already open
+        int32_t target = 0;
         if (pm_qos_fd >= 0)
         {
             return;
         }
+
+        // Open cpu_dma_latency file, set to 0us.
+        // This prevents the CPU from entering a low power state.
         pm_qos_fd = open("/dev/cpu_dma_latency", O_RDWR);
         if (pm_qos_fd < 0)
         {
@@ -99,6 +127,33 @@ namespace Kernel
         if (pm_qos_fd >= 0)
         {
             close(pm_qos_fd);
+        }
+    }
+
+    [[maybe_unused]] static void start_high_latency(void)
+    {
+        // Set low priority
+        struct sched_param schedularParam;
+        memset(&schedularParam, 0, sizeof(schedularParam));
+        schedularParam.sched_priority = 10;
+        if (sched_setscheduler(getpid(), SCHED_FIFO, &schedularParam) == -1)
+        {
+            spdlog::critical("Failed to set priority: {}", strerror(errno));
+            exit(errno);
+        }
+
+        // Set CPU affinity
+        cpu_set_t cpuSet;
+        CPU_ZERO(&cpuSet);
+        // Use both isolated cores of Intel Atom x7425E as they share a single L2 cache,
+        // the cache miss leads to large clock skew when the other core performs a load
+        // from main memory, or enters a low power state.
+        // CPU_SET(0, &cpuSet);
+        CPU_SET(3, &cpuSet);
+        if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
+        {
+            spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
+            exit(errno);
         }
     }
 } // namespace Kernel

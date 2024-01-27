@@ -46,7 +46,7 @@ std::chrono::nanoseconds haltTimestamp = 0ns;
 void abort_handler([[maybe_unused]] int signum)
 {
     printf("\n");
-    spdlog::critical("Aborting due to SIGINT");
+    fsm.eventLog.Critical("Aborting due to SIGINT");
     fsm.estop = false;
     if (priorAbort)
     {
@@ -79,23 +79,22 @@ int nic_setup(char *ifname)
         return 1;
     }
 
-    spdlog::info("{} slaves found and configured", ec_slavecount);
+    fsm.eventLog.EtherCAT(fmt::format("{} slaves found and configured", ec_slavecount));
 
     // Map CoE drives
     for (auto cnt = 1; cnt <= ec_slavecount; cnt++)
     {
         auto &&slave = ec_slave[cnt];
-        spdlog::debug("Inspecting slave {}, {} {} {} {}", cnt, slave.name, slave.eep_man, slave.eep_id, slave.eep_rev);
         if (std::strcmp(slave.name, "ASDA-B3-E CoE Drive") == 0)
         {
             if (J1ID == 0)
             {
-                spdlog::debug("Assign {} {} as J1", slave.name, cnt);
+                fsm.eventLog.EtherCAT(fmt::format("Assign {} {} as J1", slave.name, cnt));
                 J1ID = cnt;
             }
             else if (J2ID == 0)
             {
-                spdlog::debug("Assign {} {} as J2", slave.name, cnt);
+                fsm.eventLog.EtherCAT(fmt::format("Assign {} {} as J2", slave.name, cnt));
                 J2ID = cnt;
             }
         }
@@ -127,11 +126,11 @@ int nic_setup(char *ifname)
         return 1;
     }
 
-    spdlog::info("Slaves mapped and configured");
+    fsm.eventLog.EtherCAT("Slaves mapped and DC synchronization started");
 
     ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
 
-    spdlog::debug("DC capable: {}", (ec_configdc() ? "yes" : "no :("));
+    fsm.eventLog.Debug(fmt::format("DC capable: {}", (ec_configdc() ? "yes" : "no :(")));
 
     ec_slave[0].state = EC_STATE_OPERATIONAL;
     // send one valid process data to make outputs in slaves happy
@@ -160,13 +159,7 @@ int main()
     signal(SIGKILL, abort_handler);
     signal(SIGSTOP, abort_handler);
 
-    // Set realtime priority
-    struct sched_param schedp;
-    memset(&schedp, 0, sizeof(schedp));
-    // Do not set priority above 49, otherwise sockets are starved
-    schedp.sched_priority = 30;
-    sched_setscheduler(0, SCHED_FIFO, &schedp);
-
+    // Set thread policy and CPU affinity, this also locks the processor in high power state
     Kernel::start_low_latency();
 
     // Setup EtherCAT interface:
@@ -179,7 +172,7 @@ int main()
     // Check if all slaves to reach OP state
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
-        spdlog::info("Operational state reached for all slaves.");
+        fsm.eventLog.EtherCAT("Operational state reached for all slaves");
     }
     else
     {
@@ -204,13 +197,10 @@ int main()
     // Setup message bus
     auto monitor = std::thread(NC::Monitor, &fsm);
 
-    // High speed recorder
-    auto blackbox = std::thread(BB::Monitor, &fsm);
-
     // Working counter
     auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
     auto wkc = 0;
-    spdlog::debug("Expected WKC {}", expectedWKC);
+    fsm.eventLog.Debug(fmt::format("Expected WKC {}", expectedWKC));
 
     fsm.Arm.setTorqueLimit(20);
     fsm.Arm.setTorqueThreshold(15);
@@ -230,7 +220,14 @@ int main()
         wkc = ec_receive_processdata(EC_TIMEOUTRET);
         if (fsm.estop && wkc < expectedWKC)
         {
-            spdlog::error("Working counter less than expected, perhaps a slave has died. {}<{}", wkc, expectedWKC);
+            if (wkc == -1)
+            {
+                fsm.eventLog.Critical("EtherCAT bus failure");
+            }
+            else
+            {
+                fsm.eventLog.Critical(fmt::format("WKC less than expected {} < {}", wkc, expectedWKC));
+            }
             fsm.estop = false;
         }
 
@@ -238,8 +235,7 @@ int main()
         if (!fsm.estop && (fsm.next == Robot::Idle ||
                            (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
         {
-            spdlog::info("Halting");
-            blackbox.join();
+            spdlog::critical("Halting");
             monitor.join();
 
             ec_close();

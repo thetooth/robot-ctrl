@@ -57,10 +57,16 @@ bool Drive::Motor::move(double target)
         lastFault = fmt::format("Outside soft limits", target);
         return fault;
     }
-    if (std::abs(getTorque()) > torqueThreshold)
+    torqueHistory.push_back(getTorque());
+    if (torqueHistory.size() > 500)
+    {
+        torqueHistory.pop_front();
+    }
+    auto torqueAvg = std::accumulate(torqueHistory.begin(), torqueHistory.end(), 0.0) / torqueHistory.size();
+    if (std::abs(torqueAvg) > torqueThreshold)
     {
         fault = true;
-        lastFault = fmt::format("Torque threshold exceeded: {}%", getTorque());
+        lastFault = fmt::format("Torque threshold exceeded: {}%", torqueAvg);
         return fault;
     }
     pdo->setTargetPosition(target * positionRatio);
@@ -173,6 +179,7 @@ int Drive::Motor::setFollowingWindow(double value)
 //! @return Current working counter
 int Drive::Motor::faultReset()
 {
+    torqueHistory.clear();
     fault = false;
     lastFault = "OK";
     return ec_SDOwrite(slaveID, 0x6040, 0, FALSE, sizeof(CANOpen::control::word::FAULT_RESET),

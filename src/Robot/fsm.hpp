@@ -41,7 +41,7 @@ namespace Robot
       public:
         bool run;
         bool estop = true;
-        bool reset = false;
+        bool reset = true;
         bool needsHoming = true;
         bool inSync;
 
@@ -96,7 +96,7 @@ namespace Robot
             input.target_velocity = {0.0, 0.0, 0.0, 0.0};
             input.synchronization = Synchronization::Phase;
 
-            eventLog.Warning("FSM initialized");
+            eventLog.Info("FSM initialized");
         }
 
         void update();

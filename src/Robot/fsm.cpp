@@ -31,38 +31,36 @@ void Robot::FSM::update()
             next = Halt;
         }
         break;
-    case Reset:
-        Arm.faultReset();
-
+    case Reset: {
+        auto pendingErrorCode = false;
+        for (auto &&drive : Arm.drives)
         {
-            auto pendingErrorCode = false;
-            for (auto &&drive : Arm.drives)
+            if (drive->fault || drive->getErrorCode() != 0)
             {
-                if (drive->getErrorCode() != 0)
-                {
-                    auto msg =
-                        fmt::format("Drive {} has pending error code {:#x}", drive->slaveID, drive->getErrorCode());
-                    eventLog.Warning(msg);
-                    pendingErrorCode = true;
-                }
-            }
-
-            if (!pendingErrorCode)
-            {
-                eventLog.Debug("Fault reset complete");
-
-                if (run)
-                {
-                    next = Start;
-                }
-                else
-                {
-                    next = Idle;
-                }
+                eventLog.Warning(
+                    fmt::format("Drive {} has pending error code {:#x}", drive->slaveID, drive->getErrorCode()));
+                pendingErrorCode = true;
             }
         }
 
-        break;
+        if (!pendingErrorCode)
+        {
+            eventLog.Debug("Fault reset complete");
+
+            if (run)
+            {
+                next = Start;
+                break;
+            }
+            next = Idle;
+        }
+        else
+        {
+            Arm.faultReset();
+        }
+    }
+
+    break;
     case Halt:
         Arm.setModeOfOperation(CANOpen::control::mode::NO_MODE);
         Arm.setCommand(CANOpenCommand::DISABLE);
@@ -72,6 +70,7 @@ void Robot::FSM::update()
     case Halting:
         if (J1.compareState(CANOpenState::OFF) && J2.compareState(CANOpenState::OFF))
         {
+            eventLog.Info("Stopped normally");
             next = Idle;
         }
         break;
@@ -130,11 +129,11 @@ void Robot::FSM::update()
         auto trackingResult = tracking();
         if (!estop || !run || trackingResult)
         {
-            eventLog.Warning("Tracking interrupted", {
-                                                         {"estop", estop},
-                                                         {"run", run},
-                                                         {"tracking", trackingResult},
-                                                     });
+            if (!estop || trackingResult)
+            {
+                eventLog.Warning("Tracking interrupted",
+                                 "Tracking encountered error, the robot will be stopped to prevent damage");
+            }
             inSync = false;
             next = Halt;
         }
@@ -185,20 +184,19 @@ std::string Robot::FSM::dump() const
     std::vector<std::string> lines;
     auto [fx, fy, fz, fr, preResult] = IK::preprocessing(target.x, target.y, target.z, target.r);
     auto [alpha, beta, theta, phi, ikResult] = IK::inverseKinematics(fx, fy, fz, fr);
-    lines.push_back("Preprocessing result: " + std::to_string(preResult));
-    lines.push_back("Inverse kinematics result: " + std::to_string(ikResult));
-    lines.push_back("Target position: " + std::to_string(target.x) + " " + std::to_string(target.y) + " " +
-                    std::to_string(target.z) + " " + std::to_string(target.r));
-    lines.push_back("Preprocessed position: " + std::to_string(fx) + " " + std::to_string(fy) + " " +
-                    std::to_string(fz) + " " + std::to_string(fr));
-    lines.push_back("Inverse kinematics position: " + std::to_string(alpha) + " " + std::to_string(beta) + " " +
-                    std::to_string(phi) + " " + std::to_string(theta));
-    lines.push_back("Current position: " + std::to_string(J1.getPosition()) + " " + std::to_string(J2.getPosition()) +
-                    " " + std::to_string(J3.getPosition()) + " " + std::to_string(J4.getPosition()));
-    lines.push_back("Current velocity: " + std::to_string(J1.getVelocity()) + " " + std::to_string(J2.getVelocity()) +
-                    " " + std::to_string(J3.getVelocity()) + " " + std::to_string(J4.getVelocity()));
-    lines.push_back("Current torque: " + std::to_string(J1.getTorque()) + " " + std::to_string(J2.getTorque()) + " " +
-                    std::to_string(J3.getTorque()) + " " + std::to_string(J4.getTorque()));
+
+    lines.push_back(fmt::format("Preprocessing result: {}", IK::resultToString(preResult)));
+    lines.push_back(fmt::format("Inverse kinematics result: {}", IK::resultToString(ikResult)));
+    lines.push_back(
+        fmt::format("Target position:\n\t{:.3}mm {:.3}mm {:.3}mm {:.3}mm", target.x, target.y, target.z, target.r));
+    lines.push_back(fmt::format("Proposed position:\n\t{:.3}mm {:.3}mm {:.3}mm {:.3}mm", fx, fy, fz, fr));
+    lines.push_back(fmt::format("Proposed joint angles:\n\t{:.3}° {:.3}° {:.3}° {:.3}°", alpha, beta, phi, theta));
+    lines.push_back(fmt::format("Actual joint angles:\n\t{:.3}° {:.3}° {:.3}° {:.3}°", J1.getPosition(),
+                                J2.getPosition(), J3.getPosition(), J4.getPosition()));
+    lines.push_back(fmt::format("Actual velocity:\n\t{:.3}°/s {:.3}°/s {:.3}°/s {:.3}°/s", J1.getVelocity(),
+                                J2.getVelocity(), J3.getVelocity(), J4.getVelocity()));
+    lines.push_back(fmt::format("Actual torque:\n\t{}% {}% {}% {}%", J1.getTorque(), J2.getTorque(), J3.getTorque(),
+                                J4.getTorque()));
 
     return fmt::format("{}", fmt::join(lines, "\n"));
 }

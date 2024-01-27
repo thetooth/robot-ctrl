@@ -28,6 +28,8 @@ namespace NC
     }
     void Monitor(Robot::FSM *fsm)
     {
+        Kernel::start_high_latency();
+
         // Communications
         natsConnection *nc = nullptr;
         natsSubscription *ctrlSub = nullptr;
@@ -75,7 +77,7 @@ namespace NC
             }
 
             // calculate toff to get linux time and DC synced
-            TS::DCSync(ec_DCtime, CYCLETIME, &integral, &toff);
+            TS::DCSync(ec_DCtime, SYNC0, &integral, &toff);
             // Apply offset to timespec
             TS::ApplyOffset(&tick, toff);
             // Monotonic sleep
