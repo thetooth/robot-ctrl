@@ -10,6 +10,20 @@ void Robot::to_json(json &j, const EtherCATStatus &p)
     j = json{{"interval", p.interval}, {"sync0", p.sync0}, {"compensation", p.compensation}, {"integral", p.integral}};
 }
 
+void Robot::to_json(json &j, const MotorStatus &p)
+{
+    j = json{
+        {"slaveID", p.slaveID},
+        {"statusWord", p.statusWord},
+        {"controlWord", p.controlWord},
+        {"errorCode", p.errorCode},
+        {"fault", p.fault},
+        {"lastFault", p.lastFault},
+        {"actualTorque", p.actualTorque},
+        {"followingError", p.followingError},
+    };
+}
+
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
@@ -68,7 +82,23 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         .thetaVelocity = input.current_velocity[2],
         .phiVelocity = input.current_velocity[3],
     };
-    status.drives = {J1, J2, J3, J4};
+
+    status.drives.clear();
+    auto drives = {&J1, &J2, &J3, &J4};
+    for (auto drive : drives)
+    {
+        status.drives.push_back({
+            .slaveID = drive->slaveID,
+            .statusWord = drive->pdo->getStatusWord(),
+            .controlWord = drive->getControlWord(),
+            .errorCode = drive->pdo->getErrorCode(),
+            .fault = drive->fault,
+            .lastFault = drive->lastFault,
+            .actualTorque = drive->getTorque(),
+            .followingError = drive->getFollowingError(),
+        });
+    }
+    // status.drives = {J1, J2, J3, J4};
 
     json j = status;
     auto payload = j.dump();

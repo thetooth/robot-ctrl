@@ -25,6 +25,19 @@ namespace Robot
     };
     void to_json(json &j, const EtherCATStatus &p);
 
+    struct MotorStatus
+    {
+        int slaveID;
+        uint16_t statusWord;
+        uint16_t controlWord;
+        uint16_t errorCode;
+        bool fault;
+        std::string lastFault = "OK";
+        double actualTorque;
+        double followingError;
+    };
+    void to_json(json &j, const MotorStatus &p);
+
     struct Status
     {
         bool run;
@@ -33,7 +46,7 @@ namespace Robot
         std::string state;
         OTGStatus otg;
         EtherCATStatus ethercat;
-        std::vector<Drive::Motor> drives;
+        std::vector<MotorStatus> drives;
         std::string diagMsg;
         IK::Pose pose;
     };

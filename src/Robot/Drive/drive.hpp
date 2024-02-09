@@ -3,17 +3,16 @@
 
 #include "CAN/CoE.hpp"
 #include "ethercat.h"
-#include "nlohmann/json.hpp"
 #include "osal.h"
 #include "oshw.h"
 #include "pdo.hpp"
 
 #include <deque>
+#include <numeric>
 
 namespace Drive
 {
     namespace fmt = spdlog::fmt_lib;
-    using json = nlohmann::json;
 
     class Motor : public CANOpen::FSM
     {
@@ -25,7 +24,7 @@ namespace Drive
         double torqueThreshold;
         bool fault;
         std::string lastFault = "OK";
-        std::deque<double> torqueHistory = {};
+        std::deque<double> torqueHistory;
 
         Motor()
         {
@@ -51,7 +50,6 @@ namespace Drive
         int faultReset();
     };
 
-    void to_json(json &j, const Motor &m);
 } // namespace Drive
 
 #endif

@@ -15,7 +15,7 @@ void Robot::FSM::update()
         if (reset)
         {
             reset = false;
-            needsHoming = true;
+            // needsHoming = true;
             next = Reset;
         }
 
@@ -37,8 +37,15 @@ void Robot::FSM::update()
         {
             if (drive->fault || drive->getErrorCode() != 0)
             {
-                eventLog.Warning(
-                    fmt::format("Drive {} has pending error code {:#x}", drive->slaveID, drive->getErrorCode()));
+                if (drive->getErrorCode() != 0)
+                {
+                    eventLog.Warning(
+                        fmt::format("J{} has pending error code {:#x}", drive->slaveID, drive->getErrorCode()));
+                }
+                else
+                {
+                    eventLog.Warning(fmt::format("J{} has pending fault: {}", drive->slaveID, drive->lastFault));
+                }
                 pendingErrorCode = true;
             }
         }

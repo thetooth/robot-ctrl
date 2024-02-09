@@ -179,24 +179,10 @@ int Drive::Motor::setFollowingWindow(double value)
 //! @return Current working counter
 int Drive::Motor::faultReset()
 {
+    spdlog::debug("Drive {} fault reset", slaveID);
     torqueHistory.clear();
     fault = false;
     lastFault = "OK";
     return ec_SDOwrite(slaveID, 0x6040, 0, FALSE, sizeof(CANOpen::control::word::FAULT_RESET),
                        &CANOpen::control::word::FAULT_RESET, EC_TIMEOUTRXM);
-}
-
-//! @brief Convert a drive to JSON
-void Drive::to_json(json &j, const Motor &m)
-{
-    j = json{
-        {"slaveID", m.slaveID},
-        {"fault", m.fault},
-        {"lastFault", m.lastFault},
-        {"followingError", m.getFollowingError()},
-        {"actualTorque", m.getTorque()},
-        {"statusWord", m.pdo->getStatusWord()},
-        {"controlWord", m.getControlWord()},
-        {"errorCode", m.getErrorCode()},
-    };
 }
