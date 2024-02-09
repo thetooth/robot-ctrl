@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-set(CMAKE_EXE_LINKER_FLAGS "-static")
+# set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+# set(CMAKE_EXE_LINKER_FLAGS "-static")
 
 # Setting up ccache or sccache
 find_program(CCACHE "ccache")
