@@ -48,6 +48,7 @@ void abort_handler([[maybe_unused]] int signum)
     printf("\n");
     fsm.eventLog.Critical("Aborting due to SIGINT");
     fsm.estop = false;
+    fsm.shutdown = true;
     if (priorAbort)
     {
         exit(255);
@@ -218,7 +219,7 @@ int main()
     {
         ec_send_processdata();
         wkc = ec_receive_processdata(EC_TIMEOUTRET);
-        if (fsm.estop && wkc < expectedWKC)
+        if (!fsm.shutdown && wkc < expectedWKC)
         {
             if (wkc == -1)
             {
@@ -228,12 +229,12 @@ int main()
             {
                 fsm.eventLog.Critical(fmt::format("WKC less than expected {} < {}", wkc, expectedWKC));
             }
-            fsm.estop = false;
+            fsm.shutdown = true;
         }
 
         fsm.update();
-        if (!fsm.estop && (fsm.next == Robot::Idle ||
-                           (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
+        if (fsm.shutdown && (fsm.next == Robot::Idle ||
+                             (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
         {
             spdlog::critical("Halting");
             monitor.join();

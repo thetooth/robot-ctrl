@@ -71,7 +71,7 @@ namespace NC
 
             fsm->broadcastStatus(nc);
 
-            if (!fsm->estop)
+            if (fsm->shutdown)
             {
                 run = false;
             }

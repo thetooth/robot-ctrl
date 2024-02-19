@@ -24,6 +24,7 @@ namespace Robot
     {
         Idle,
         Reset,
+        Resetting,
         Halt,
         Halting,
         Start,
@@ -43,6 +44,7 @@ namespace Robot
         bool estop = true;
         bool reset = true;
         bool needsHoming = true;
+        bool shutdown = false;
         bool inSync;
 
         State next = Idle;

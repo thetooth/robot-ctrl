@@ -41,6 +41,7 @@ namespace Robot
     struct Status
     {
         bool run;
+        bool estop;
         bool alarm;
         bool needsHoming;
         std::string state;

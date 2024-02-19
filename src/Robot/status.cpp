@@ -27,9 +27,9 @@ void Robot::to_json(json &j, const MotorStatus &p)
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
-        {"run", p.run},       {"alarm", p.alarm},     {"needsHoming", p.needsHoming},
-        {"state", p.state},   {"otg", p.otg},         {"ethercat", p.ethercat},
-        {"drives", p.drives}, {"diagMsg", p.diagMsg}, {"pose", p.pose},
+        {"run", p.run},         {"estop", p.estop}, {"alarm", p.alarm},       {"needsHoming", p.needsHoming},
+        {"state", p.state},     {"otg", p.otg},     {"ethercat", p.ethercat}, {"drives", p.drives},
+        {"diagMsg", p.diagMsg}, {"pose", p.pose},
     };
 }
 
@@ -64,6 +64,7 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         IK::forwardKinematics(J1.getPosition(), J2.getPosition(), input.current_position[2], input.current_position[3]);
 
     status.run = run;
+    status.estop = estop;
     status.alarm = alarm;
     status.state = to_string();
     status.needsHoming = needsHoming;
