@@ -36,6 +36,11 @@ uint32_t Sim::PDO::getDigitalInputs() const
     return 0;
 }
 
+bool Sim::PDO::getEmergencyStop() const
+{
+    return false;
+}
+
 void Sim::PDO::setControlWord(uint16_t value)
 {
     control_word = value;

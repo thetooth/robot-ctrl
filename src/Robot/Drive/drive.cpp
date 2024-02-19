@@ -123,6 +123,16 @@ uint16_t Drive::Motor::getErrorCode() const
     return pdo->getErrorCode();
 }
 
+//! @brief Get the current emergency stop state of the drive
+//!
+//! This function returns the current emergency stop state of the drive.
+//!
+//! @return The current emergency stop state of the drive
+bool Drive::Motor::getEmergencyStop() const
+{
+    return pdo->getEmergencyStop();
+}
+
 //! @brief Set the mode of operation for the drive
 //!
 //! This function sets the mode of operation for the drive.

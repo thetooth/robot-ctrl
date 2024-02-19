@@ -90,6 +90,11 @@ uint32_t Delta::PDO::getDigitalInputs() const
     return in->digital_inputs;
 }
 
+bool Delta::PDO::getEmergencyStop() const
+{
+    return getDigitalInputs() & (1 << 16);
+}
+
 void Delta::PDO::setControlWord(uint16_t value)
 {
     out->control_word = value;

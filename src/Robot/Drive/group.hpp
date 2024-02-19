@@ -24,6 +24,7 @@ namespace Drive
         int setTorqueThreshold(double value);
         int setFollowingWindow(double value);
         int faultReset();
+        bool getEmergencyStop() const;
     };
 
 } // namespace Drive

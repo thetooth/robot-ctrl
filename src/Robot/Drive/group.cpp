@@ -65,3 +65,15 @@ int Drive::Group::faultReset()
     }
     return wkc;
 }
+
+bool Drive::Group::getEmergencyStop() const
+{
+    for (auto &&drive : drives)
+    {
+        if (drive->getEmergencyStop())
+        {
+            return true;
+        }
+    }
+    return false;
+}

@@ -1,11 +1,46 @@
-/**
- * @file fsm.cpp
- * @brief Implementation of the FSM (Finite State Machine) class for controlling a robot.
- */
 #include "fsm.hpp"
 
+//! @brief Update the state machine
+//!
+//! This function updates the state machine of the robot.
+//!
+//! The state machine has the following states:
+//! - Idle: The robot is not doing anything, wait for a command
+//!
+//! - Reset: Check and report any faults and send a reset command to the drives
+//! - Resetting: Check if the reset command has been completed, if not, keep sending the reset command
+//!              as they often take multiple cycles to complete
+//!
+//! - Halt: Disable the drives
+//! - Halting: Wait for the drives to enter power off state
+//!
+//! - Start: Enable the drives
+//! - Starting: Wait for the drives to enter power on state
+//!
+//! - Home: Set mode of operation to homing, set homing offsets and command the drives to home
+//! - Homing: Wait for the drives to report homing complete TODO: Add timeout
+//!
+//! - Track: Set mode of operation to position cyclic
+//! - Tracking: Begin tracking the target position with OTG
 void Robot::FSM::update()
 {
+    // Check if any drives have the emergency stop flag set
+    if (Arm.getEmergencyStop())
+    {
+        if (estop)
+        {
+            eventLog.Critical("Emergency Stop");
+        }
+        run = false;
+        reset = false;
+        estop = false;
+    }
+    else
+    {
+        estop = true;
+    }
+
+    // Update the CoE state machine
     Arm.update();
 
     switch (next)
@@ -15,7 +50,6 @@ void Robot::FSM::update()
         if (reset)
         {
             reset = false;
-            // needsHoming = true;
             next = Reset;
         }
 
@@ -25,14 +59,8 @@ void Robot::FSM::update()
             next = Reset;
         }
 
-        if (!estop)
-        {
-            needsHoming = true;
-            next = Halt;
-        }
         break;
-    case Reset: {
-        auto pendingErrorCode = false;
+    case Reset:
         for (auto &&drive : Arm.drives)
         {
             if (drive->fault || drive->getErrorCode() != 0)
@@ -46,6 +74,19 @@ void Robot::FSM::update()
                 {
                     eventLog.Warning(fmt::format("J{} has pending fault: {}", drive->slaveID, drive->lastFault));
                 }
+            }
+        }
+
+        Arm.faultReset();
+        next = Resetting;
+
+        break;
+    case Resetting: {
+        auto pendingErrorCode = false;
+        for (auto &&drive : Arm.drives)
+        {
+            if (drive->getErrorCode() != 0)
+            {
                 pendingErrorCode = true;
             }
         }
@@ -66,7 +107,6 @@ void Robot::FSM::update()
             Arm.faultReset();
         }
     }
-
     break;
     case Halt:
         Arm.setModeOfOperation(CANOpen::control::mode::NO_MODE);
@@ -78,8 +118,9 @@ void Robot::FSM::update()
         if (J1.compareState(CANOpenState::OFF) && J2.compareState(CANOpenState::OFF))
         {
             eventLog.Info("Stopped normally");
-            next = Idle;
         }
+        next = Idle;
+
         break;
     case Start:
         Arm.setCommand(CANOpenCommand::ENABLE);
@@ -165,6 +206,10 @@ std::string Robot::FSM::to_string() const
     {
     case Idle:
         return "Idle";
+    case Reset:
+        return "Reset";
+    case Resetting:
+        return "Resetting";
     case Halt:
         return "Halt";
     case Halting:
@@ -186,6 +231,7 @@ std::string Robot::FSM::to_string() const
     }
 }
 
+//! @brief Dump kinematic and drive information
 std::string Robot::FSM::dump() const
 {
     std::vector<std::string> lines;

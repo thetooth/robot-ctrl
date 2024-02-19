@@ -17,6 +17,7 @@ namespace Drive
         virtual int32_t getFollowingError() const = 0;
         virtual uint16_t getErrorCode() const = 0;
         virtual uint32_t getDigitalInputs() const = 0;
+        virtual bool getEmergencyStop() const = 0;
 
         virtual void setControlWord(uint16_t value) = 0;
         virtual void setTargetPosition(int32_t value) = 0;

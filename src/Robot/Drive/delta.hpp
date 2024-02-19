@@ -56,6 +56,7 @@ namespace Delta
         int32_t getFollowingError() const;
         uint16_t getErrorCode() const;
         uint32_t getDigitalInputs() const;
+        bool getEmergencyStop() const;
 
         void setControlWord(uint16_t value);
         void setTargetPosition(int32_t value);
