@@ -9,8 +9,12 @@ int Delta::PO2SOconfig(uint16_t slave)
 {
     auto wkc = 0;
 
+    // Set SYNC0 cycle time
+    uint32_t sync = 1000000; // 1ms in us
+    wkc += ec_SDOwrite(slave, 0x1006, 1, FALSE, sizeof(sync), &sync, EC_TIMEOUTRXM);
+
     // Set interpolation values
-    uint8_t interpolationPeriod = 2; // ms
+    uint8_t interpolationPeriod = 1; // ms
     int8_t ratio = -3;               // See manual for details
     wkc += ec_SDOwrite(slave, 0x60C2, 1, FALSE, sizeof(interpolationPeriod), &interpolationPeriod, EC_TIMEOUTRXM);
     wkc += ec_SDOwrite(slave, 0x60C2, 2, FALSE, sizeof(ratio), &ratio, EC_TIMEOUTRXM);
