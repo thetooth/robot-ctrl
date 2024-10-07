@@ -52,6 +52,10 @@ void Sim::PDO::setControlWord(uint16_t value)
     {
         status_word = CANOpen::status::value::ON_STATE;
     }
+    else if (control_word == CANOpen::control::word::SET_ABS_POINT_NOBLEND)
+    {
+        status_word = CANOpen::status::value::HOMING_COMPLETE_STATE;
+    }
     else
     {
         status_word = CANOpen::status::value::OFF_STATE;
