@@ -7,7 +7,11 @@ void Robot::to_json(json &j, const OTGStatus &p)
 
 void Robot::to_json(json &j, const EtherCATStatus &p)
 {
-    j = json{{"interval", p.interval}, {"sync0", p.sync0}, {"compensation", p.compensation}, {"integral", p.integral}};
+    j = json{{"interval", p.interval},
+             {"sync0", p.sync0},
+             {"compensation", p.compensation},
+             {"integral", p.integral},
+             {"state", p.state}};
 }
 
 void Robot::to_json(json &j, const MotorStatus &p)
@@ -27,9 +31,18 @@ void Robot::to_json(json &j, const MotorStatus &p)
 void Robot::to_json(json &j, const Status &p)
 {
     j = json{
-        {"run", p.run},         {"estop", p.estop}, {"alarm", p.alarm},       {"needsHoming", p.needsHoming},
-        {"state", p.state},     {"otg", p.otg},     {"ethercat", p.ethercat}, {"drives", p.drives},
-        {"diagMsg", p.diagMsg}, {"pose", p.pose},
+        {"run", p.run},
+        {"estop", p.estop},
+        {"alarm", p.alarm},
+        {"needsHoming", p.needsHoming},
+        {"state", p.state},
+        {"otg", p.otg},
+        {"ethercat", p.ethercat},
+        {"drives", p.drives},
+        {"diagMsg", p.diagMsg},
+        {"pose", p.pose},
+        {"runtimeDuration", p.runtimeDuration},
+        {"powerOnDuration", p.powerOnDuration},
     };
 }
 
@@ -42,7 +55,7 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
     }
 
     auto alarm = false;
-    if (J1.fault || J2.fault || KinematicAlarm)
+    if (J1.fault || J2.fault || KinematicAlarm || EtherCATFault || !estop)
     {
         alarm = true;
     }
@@ -83,6 +96,8 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         .thetaVelocity = input.current_velocity[2],
         .phiVelocity = input.current_velocity[3],
     };
+    status.runtimeDuration = runtimeDuration;
+    status.powerOnDuration = powerOnDuration;
 
     status.drives.clear();
     auto drives = {&J1, &J2, &J3, &J4};

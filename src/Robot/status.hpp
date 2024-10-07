@@ -22,6 +22,7 @@ namespace Robot
         int64_t sync0;
         int64_t compensation;
         int64_t integral;
+        int64_t state;
     };
     void to_json(json &j, const EtherCATStatus &p);
 
@@ -50,6 +51,8 @@ namespace Robot
         std::vector<MotorStatus> drives;
         std::string diagMsg;
         IK::Pose pose;
+        double runtimeDuration;
+        double powerOnDuration;
     };
     void to_json(json &j, const Status &p);
 } // namespace Robot

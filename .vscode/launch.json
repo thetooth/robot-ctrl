@@ -23,7 +23,7 @@
                 "settings set target.inherit-env false",
             ],
             "preRunCommands": [
-                "breakpoint delete" // Remove default breakpoints as they cause loss of synchronisation in EtherCAT loop
+                //"breakpoint delete" // Remove default breakpoints as they cause loss of synchronisation in EtherCAT loop
             ],
             "console": "internalConsole",
             "internalConsoleOptions": "openOnSessionStart",
