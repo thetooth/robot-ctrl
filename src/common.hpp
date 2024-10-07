@@ -22,8 +22,8 @@ namespace TS
     //! This function uses a simple PI controller to try and align the Linux clock with the DC sync0 event.
     [[maybe_unused]] static void DCSync(int64_t reftime, int64_t cycletime, int64_t *integral, int64_t *offsettime)
     {
-        /* set linux sync point 500us later than DC sync, just as example */
-        int64_t delta = (reftime - 50000) % cycletime;
+        /* set linux sync point 500us later than DC sync, just as example  - 50000 */
+        int64_t delta = (reftime - int64_t(SYNC0 / 2)) % cycletime;
         if (delta > (cycletime / 2))
         {
             delta = delta - cycletime;
@@ -83,7 +83,7 @@ namespace Kernel
         struct sched_param schedularParam;
         memset(&schedularParam, 0, sizeof(schedularParam));
         // Do not set priority above 49, otherwise sockets are starved
-        schedularParam.sched_priority = 30;
+        schedularParam.sched_priority = 40;
         if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
         {
             spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
@@ -132,13 +132,24 @@ namespace Kernel
 
     [[maybe_unused]] static void start_high_latency(void)
     {
-        // Set low priority
+        // // Set low priority
+        // struct sched_param schedularParam;
+        // memset(&schedularParam, 0, sizeof(schedularParam));
+        // schedularParam.sched_priority = 10;
+        // if (sched_setscheduler(getpid(), SCHED_FIFO, &schedularParam) == -1)
+        // {
+        //     spdlog::critical("Failed to set priority: {}", strerror(errno));
+        //     exit(errno);
+        // }
+
+        // Set realtime priority
         struct sched_param schedularParam;
         memset(&schedularParam, 0, sizeof(schedularParam));
+        // Do not set priority above 49, otherwise sockets are starved
         schedularParam.sched_priority = 10;
-        if (sched_setscheduler(getpid(), SCHED_FIFO, &schedularParam) == -1)
+        if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
         {
-            spdlog::critical("Failed to set priority: {}", strerror(errno));
+            spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
             exit(errno);
         }
 
