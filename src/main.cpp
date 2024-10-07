@@ -23,6 +23,7 @@
 #include "Robot/Drive/sim.hpp"
 #include "Robot/fsm.hpp"
 
+#include "check.hpp"
 #include "gnuplot.hpp"
 
 using namespace std::literals::chrono_literals;
@@ -170,6 +171,13 @@ int main()
         return 1;
     }
 
+    // Working counter
+    auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
+    auto wkc = 0;
+    fsm.eventLog.Debug(fmt::format("Expected WKC {}", expectedWKC));
+
+    auto checker = std::thread(check, &fsm, &wkc, expectedWKC);
+
     // Check if all slaves to reach OP state
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
     {
@@ -198,13 +206,8 @@ int main()
     // Setup message bus
     auto monitor = std::thread(NC::Monitor, &fsm);
 
-    // Working counter
-    auto expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
-    auto wkc = 0;
-    fsm.eventLog.Debug(fmt::format("Expected WKC {}", expectedWKC));
-
-    fsm.Arm.setTorqueLimit(20);
-    fsm.Arm.setTorqueThreshold(15);
+    fsm.Arm.setTorqueLimit(50);
+    fsm.Arm.setTorqueThreshold(95);
     fsm.Arm.setFollowingWindow(300);
 
     // Timing
@@ -219,24 +222,13 @@ int main()
     {
         ec_send_processdata();
         wkc = ec_receive_processdata(EC_TIMEOUTRET);
-        if (!fsm.shutdown && wkc < expectedWKC)
-        {
-            if (wkc == -1)
-            {
-                fsm.eventLog.Critical("EtherCAT bus failure");
-            }
-            else
-            {
-                fsm.eventLog.Critical(fmt::format("WKC less than expected {} < {}", wkc, expectedWKC));
-            }
-            fsm.shutdown = true;
-        }
 
         fsm.update();
         if (fsm.shutdown && (fsm.next == Robot::Idle ||
                              (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
         {
             spdlog::critical("Halting");
+            checker.join();
             monitor.join();
 
             ec_close();
@@ -252,6 +244,7 @@ int main()
             .sync0 = ec_DCtime % int64_t(CYCLETIME),
             .compensation = toff,
             .integral = integral,
+            .state = ec_slave[0].state,
         };
 
         // calculate toff to get linux time and DC synced
