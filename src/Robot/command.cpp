@@ -11,14 +11,27 @@ void Robot::FSM::receiveCommand([[maybe_unused]] natsConnection *nc, [[maybe_unu
         if (command.compare("stop") == 0)
         {
             run = false;
+            jog = false;
         }
         if (command.compare("start") == 0 && estop)
         {
             run = true;
         }
-        if (command.compare("goto") == 0 && estop)
+        if (command.compare("goto") == 0 && estop && !jog)
         {
             target = payload["pose"].template get<IK::Pose>();
+        }
+        if (command.compare("jog") == 0 && estop)
+        {
+
+            run = true;
+            jog = true;
+            auto jog = payload["jog"].template get<IK::Pose>();
+            // Jogging is relative to the current position of the actual joints
+            target.alpha = J1.getPosition() + jog.alpha;
+            target.beta = J2.getPosition() + jog.beta;
+            target.theta = J3.getPosition() + jog.theta;
+            target.phi = J4.getPosition() + jog.phi;
         }
         if (command.compare("waypoints") == 0 && estop)
         {

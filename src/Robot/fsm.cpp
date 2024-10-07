@@ -22,10 +22,13 @@
 //!
 //! - Track: Set mode of operation to position cyclic
 //! - Tracking: Begin tracking the target position with OTG
+//!
+//! - Jog: Set mode of operation to position cyclic
+//! - Jogging: Begin jogging the target position with OTG
 void Robot::FSM::update()
 {
     // Check if any drives have the emergency stop flag set
-    if (Arm.getEmergencyStop())
+    if (Arm.getEmergencyStop() || EtherCATFault)
     {
         if (estop)
         {
@@ -35,13 +38,17 @@ void Robot::FSM::update()
         reset = false;
         estop = false;
     }
-    else
+    else if (!estop)
     {
+        eventLog.Info("Emergency Stop reset");
         estop = true;
     }
 
     // Update the CoE state machine
     Arm.update();
+
+    // Update counters
+    runtimeDuration += CYCLETIME / double(TS::NSEC_PER_SECOND);
 
     switch (next)
     {
@@ -112,6 +119,9 @@ void Robot::FSM::update()
         Arm.setModeOfOperation(CANOpen::control::mode::NO_MODE);
         Arm.setCommand(CANOpenCommand::DISABLE);
 
+        inSync = false;
+        jog = false;
+
         next = Halting;
         break;
     case Halting:
@@ -130,7 +140,12 @@ void Robot::FSM::update()
     case Starting:
         if (J1.compareState(CANOpenState::ON) && J2.compareState(CANOpenState::ON))
         {
-            if (needsHoming)
+            if (jog)
+            {
+                eventLog.Debug("Entered ON state, enter jogging");
+                next = Jog;
+            }
+            else if (needsHoming)
             {
                 eventLog.Debug("Entered ON state, enter homing");
                 next = Home;
@@ -147,15 +162,11 @@ void Robot::FSM::update()
         }
         break;
     case Home:
-        Arm.setModeOfOperation(CANOpen::control::mode::HOME);
-        J1.setHomingOffset(-235);
-        J2.setHomingOffset(145);
-        Arm.setCommand(CANOpenCommand::HOME);
+        configureHoming();
 
         next = Homing;
     case Homing: {
-        auto homingResult =
-            J1.compareState(CANOpenState::HOMING_COMPLETE) && J2.compareState(CANOpenState::HOMING_COMPLETE);
+        auto homingResult = homing();
         if (homingResult)
         {
             eventLog.Debug("Homing complete");
@@ -185,18 +196,23 @@ void Robot::FSM::update()
             inSync = false;
             next = Halt;
         }
-        break;
+        powerOnDuration += CYCLETIME / TS::NSEC_PER_SECOND;
     }
-    case Path:
+    break;
+    case Jog:
         Arm.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
-        next = Pathing;
+        next = Jogging;
         break;
-    case Pathing:
-        if (!estop || !run)
+    case Jogging:
+        auto joggingResult = jogging();
+        if (!estop || !run || joggingResult)
         {
-            eventLog.Warning("Pathing interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
+            eventLog.Warning("Jogging interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
+            inSync = false;
             next = Halt;
         }
+        powerOnDuration += CYCLETIME / double(TS::NSEC_PER_SECOND);
+        break;
     }
 }
 
@@ -226,6 +242,10 @@ std::string Robot::FSM::to_string() const
         return "Track";
     case Tracking:
         return "Tracking";
+    case Jog:
+        return "Jog";
+    case Jogging:
+        return "Jogging";
     default:
         return "[Unknown State]";
     }

@@ -31,16 +31,17 @@ namespace Robot
         Starting,
         Home,
         Homing,
+        Jog,
+        Jogging,
         Track,
         Tracking,
-        Path,
-        Pathing
     };
 
     class FSM
     {
       public:
         bool run;
+        bool jog;
         bool estop = true;
         bool reset = true;
         bool needsHoming = true;
@@ -49,6 +50,8 @@ namespace Robot
 
         State next = Idle;
         EventLog eventLog = {};
+        double runtimeDuration = 0;
+        double powerOnDuration = 0;
 
         Drive::Motor J1;
         Drive::Motor J2;
@@ -82,6 +85,7 @@ namespace Robot
         Status status;
 
         bool KinematicAlarm = false;
+        bool EtherCATFault = false;
 
         FSM()
         {
@@ -106,6 +110,9 @@ namespace Robot
         void receiveCommand(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
         void receiveSettings(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
         void broadcastStatus(natsConnection *nc = nullptr);
+        void configureHoming();
+        bool homing();
+        bool jogging();
         std::string to_string() const;
         std::string dump() const;
     };
