@@ -10,21 +10,30 @@
 
 namespace IK
 {
-    const auto L1 = 200.0;
-    const auto L2 = 200.0;
-    const auto ScrewPitch = 16.0 / 360;
+    const auto L1 = 200.0;               // Length of the first link
+    const auto L2 = 200.0;               // Length of the second link
+    const auto ScrewPitch = 16.0 / 360;  // Screw pitch of the z axis ball screw
+    const auto AlphaMin = -45.0;         // Minimum angle of the first joint
+    const auto AlphaMax = 225.0;         // Maximum angle of the first joint
+    const auto BetaMin = -150.0;         // Minimum angle of the second joint
+    const auto BetaMax = 150.0;          // Maximum angle of the second joint
+    const auto BaseKeepOut = 100.0;      // Keep out distance from the base
+    const auto BaseKeepOutBorder = 10.0; // Keep out distance from the base buffer
 
     enum Result
     {
         Success,
         JointLimit,
         Singularity,
+        ForwardKinematic,
     };
     std::string resultToString(Result result);
 
     std::tuple<double, double, double, double> forwardKinematics(double alpha, double beta, double theta, double phi);
     std::tuple<double, double, double, double, Result> inverseKinematics(double x, double y, double z, double r);
     std::tuple<double, double, double, double, Result> preprocessing(double x, double y, double z, double r);
+    std::tuple<double, double, double, double, Result> postprocessing(double alpha, double beta, double theta,
+                                                                      double phi);
 
     using json = nlohmann::json;
     struct Pose
