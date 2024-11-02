@@ -7,10 +7,7 @@
 void Robot::FSM::configureHoming()
 {
     Arm.setModeOfOperation(CANOpen::control::mode::HOME);
-    J1.setHomingOffset(-235);
-    J2.setHomingOffset(145);
-    J3.setHomingOffset(0);
-    J4.setHomingOffset(0);
+
     // Arm.setCommand(CANOpenCommand::HOME);
 }
 

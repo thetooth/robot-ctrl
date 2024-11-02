@@ -44,6 +44,7 @@ namespace Drive
         uint16_t getErrorCode() const;
         bool getEmergencyStop() const;
         int setModeOfOperation(CANOpen::control::mode value);
+        int setHomingMode(int32_t value);
         int setHomingOffset(int32_t value);
         int setTorqueLimit(double value);
         int setTorqueThreshold(double value);

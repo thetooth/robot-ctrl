@@ -144,6 +144,17 @@ int Drive::Motor::setModeOfOperation(CANOpen::control::mode value)
     return ec_SDOwrite(slaveID, 0x6060, 0, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
 }
 
+//! @brief Set the homing mode for the drive
+//!
+//! This function sets the homing mode for the drive.
+//!
+//! @param value The homing mode to set
+//! @return Current working counter
+int Drive::Motor::setHomingMode(int32_t value)
+{
+    return ec_SDOwrite(slaveID, 0x6098, 0, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
+}
+
 //! @brief Set the homing offset for the drive
 //!
 //! This function sets the homing offset for the drive. The homing offset is used to

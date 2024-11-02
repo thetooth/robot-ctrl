@@ -1,3 +1,7 @@
+#pragma once
+
+#include <filesystem>
+
 //! @brief Asynchronously check the state of the EtherCAT network
 //!
 //! This function checks the state of the EtherCAT network and slaves. If a slave is not in the operational state,
@@ -20,6 +24,10 @@ void check(Robot::FSM *fsm, int *wkc, int expectedWKC)
 
     while (!fsm->shutdown)
     {
+        if (EcatError)
+        {
+            fsm->eventLog.Debug(fmt::format("Error list: {}", ec_elist2string()));
+        }
         // Check if all slaves are operational or if a slave requires a state change
         if (*wkc < expectedWKC || ec_group[currentgroup].docheckstate)
         {
@@ -101,5 +109,35 @@ void check(Robot::FSM *fsm, int *wkc, int expectedWKC)
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &tick, NULL);
         // Increment timespec by service time
         TS::Increment(tick, serviceTime);
+    }
+}
+
+void systemCheck(Robot::FSM *fsm)
+{
+    // Attempt to open thermal zone file
+    std::filesystem::path thermalZonePath = "/sys/class/thermal/thermal_zone1/temp";
+    std::ifstream thermalZoneFile(thermalZonePath);
+    if (!thermalZoneFile.is_open())
+    {
+        spdlog::error("Failed to open thermal zone file");
+        return;
+    }
+
+    while (!fsm->shutdown)
+    {
+        thermalZoneFile.seekg(0);
+        std::string temp;
+        std::getline(thermalZoneFile, temp);
+        double temperature = std::stoi(temp) / 1000.0;
+
+        fsm->status.cpuTemperature = temperature;
+
+        if (temperature > 80)
+        {
+            fsm->eventLog.Critical(fmt::format("CPU temperature too high: {} C", temperature));
+            fsm->shutdown = true;
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }

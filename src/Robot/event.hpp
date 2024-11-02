@@ -81,10 +81,12 @@ namespace Robot
         }
         void Kinematic(std::string message, json detail = nullptr)
         {
+            spdlog::info(message);
             push_back(Event(Event::Level::Kinematic, message, detail));
         }
         void EtherCAT(std::string message)
         {
+            spdlog::info(message);
             push_back(Event(Event::Level::EtherCAT, message));
         }
     };

@@ -176,7 +176,8 @@ int main()
     auto wkc = 0;
     fsm.eventLog.Debug(fmt::format("Expected WKC {}", expectedWKC));
 
-    auto checker = std::thread(check, &fsm, &wkc, expectedWKC);
+    auto ethercatSupervisor = std::thread(check, &fsm, &wkc, expectedWKC);
+    auto systemSupervisor = std::thread(systemCheck, &fsm);
 
     // Check if all slaves to reach OP state
     if (ec_slave[0].state == EC_STATE_OPERATIONAL)
@@ -192,6 +193,8 @@ int main()
     // Setup drive PDO objects
     Delta::PDO J1(J1ID);
     Delta::PDO J2(J2ID);
+    // Sim::PDO J1;
+    // Sim::PDO J2;
     Sim::PDO J3;
     Sim::PDO J4;
 
@@ -200,6 +203,7 @@ int main()
     fsm.J2 = Drive::Motor{J2ID, &J2, PPU * GEAR, PPV * GEAR, -155, 155};
     fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -3600, 3600};
     fsm.J4 = Drive::Motor{4, &J4, PPU, PPV, -360, 360};
+
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2, &fsm.J3, &fsm.J4};
 
@@ -209,6 +213,10 @@ int main()
     fsm.Arm.setTorqueLimit(50);
     fsm.Arm.setTorqueThreshold(95);
     fsm.Arm.setFollowingWindow(300);
+    fsm.J1.setHomingOffset(-235);
+    fsm.J2.setHomingOffset(145);
+    fsm.J3.setHomingOffset(0);
+    fsm.J4.setHomingOffset(0);
 
     // Timing
     struct timespec tick;
@@ -228,7 +236,8 @@ int main()
                              (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
         {
             spdlog::critical("Halting");
-            checker.join();
+            ethercatSupervisor.join();
+            systemSupervisor.join();
             monitor.join();
 
             ec_close();

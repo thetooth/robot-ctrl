@@ -91,7 +91,7 @@ namespace CANOpen
 
         // controlmode stores the available CAN control mode (also called "Mode of Operation")
         // For more infos, see DS402, page 37
-        enum mode
+        enum mode : int8_t
         {
             NO_MODE = -1,       // Default value to mean "error occurred"
             POSITION = 1,       // Profiled position (point to point) mode

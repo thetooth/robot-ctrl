@@ -97,7 +97,7 @@ namespace Kernel
         // the cache miss leads to large clock skew when the other core performs a load
         // from main memory, or enters a low power state.
         CPU_SET(2, &cpuSet);
-        // CPU_SET(3, &cpuSet);
+        CPU_SET(3, &cpuSet);
         if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
         {
             spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
@@ -159,7 +159,7 @@ namespace Kernel
         // Use both isolated cores of Intel Atom x7425E as they share a single L2 cache,
         // the cache miss leads to large clock skew when the other core performs a load
         // from main memory, or enters a low power state.
-        // CPU_SET(0, &cpuSet);
+        CPU_SET(2, &cpuSet);
         CPU_SET(3, &cpuSet);
         if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
         {
