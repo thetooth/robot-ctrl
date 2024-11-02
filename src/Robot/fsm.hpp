@@ -64,6 +64,32 @@ namespace Robot
         InputParameter<4> input;
         OutputParameter<4> output;
 
+        // Settings
+        std::array<OTGSettings, 4> previousDynamics;
+        std::array<OTGSettings, 4> joggingDynamics = {
+            OTGSettings{
+                .max_velocity = 100.0,
+                .max_acceleration = 100.0,
+                .max_jerk = 100.0,
+            },
+            OTGSettings{
+                .max_velocity = 100.0,
+                .max_acceleration = 100.0,
+                .max_jerk = 100.0,
+            },
+            OTGSettings{
+                .max_velocity = 100.0,
+                .max_acceleration = 100.0,
+                .max_jerk = 100.0,
+            },
+            OTGSettings{
+                .max_velocity = 100.0,
+                .max_acceleration = 100.0,
+                .max_jerk = 100.0,
+            },
+        };
+        std::array<OTGSettings, 4> trackingDynamics;
+
         // Target
         IK::Pose target = {
             .x = 0,
@@ -108,11 +134,13 @@ namespace Robot
         void update();
         bool tracking();
         void receiveCommand(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
-        void receiveSettings(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
+        void updateDynamics(std::vector<Robot::OTGSettings> settings);
         void broadcastStatus(natsConnection *nc = nullptr);
         void configureHoming();
         bool homing();
         bool jogging();
+        void setJoggingDynamics();
+        void restoreDynamics();
         std::string to_string() const;
         std::string dump() const;
     };

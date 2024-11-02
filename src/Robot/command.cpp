@@ -57,6 +57,22 @@ void Robot::FSM::receiveCommand([[maybe_unused]] natsConnection *nc, [[maybe_unu
             needsHoming = true;
             run = true;
         }
+        if (command.compare("setHome") == 0)
+        {
+            auto pose = payload["pose"].template get<IK::Pose>();
+            J1.setHomingOffset(pose.alpha);
+            J2.setHomingOffset(pose.beta);
+            J3.setHomingOffset(pose.theta);
+            J4.setHomingOffset(pose.phi);
+
+            J1.setHomingMode(35);
+            J2.setHomingMode(35);
+            J3.setHomingMode(35);
+            J4.setHomingMode(35);
+
+            needsHoming = true;
+            run = true;
+        }
         if (command.compare("hotStart") == 0)
         {
             needsHoming = false;

@@ -17,7 +17,7 @@ bool Robot::FSM::tracking()
             J3.getVelocity(),
             J4.getVelocity(),
         };
-        input.current_acceleration = {0.0, 0.0};
+        input.current_acceleration = {0.0, 0.0, 0.0, 0.0};
         otg.reset();
 
         eventLog.Kinematic("Resync OTG to actual position");
@@ -54,7 +54,16 @@ bool Robot::FSM::tracking()
     status.otg.result = otg.update(input, output);
     auto &p = output.new_position;
 
-    if (J1.move(p[0]) || J2.move(p[1]) || J3.move(p[2]) || J4.move(p[3]))
+    auto [d1, d2, d3, d4, postResult] = IK::postprocessing(p[0], p[1], p[2], p[3]);
+    if (postResult == IK::Result::ForwardKinematic)
+    {
+        KinematicAlarm = true;
+        eventLog.Error("Forward kinematic test detected imminent crash", dump());
+        run = false;
+        return true;
+    }
+
+    if (J1.move(d1) || J2.move(d2) || J3.move(d3) || J4.move(d4))
     {
         for (auto &&drive : Arm.drives)
         {

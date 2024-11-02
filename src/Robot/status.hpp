@@ -53,6 +53,7 @@ namespace Robot
         IK::Pose pose;
         double runtimeDuration;
         double powerOnDuration;
+        double cpuTemperature;
     };
     void to_json(json &j, const Status &p);
 } // namespace Robot

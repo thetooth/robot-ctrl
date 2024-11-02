@@ -6,6 +6,7 @@
 #include "nlohmann/json.hpp"
 
 #include "../Robot/fsm.hpp"
+#include "kv.hpp"
 
 namespace NC
 {
@@ -19,12 +20,23 @@ namespace NC
             fsmPtr->receiveCommand(nc, sub, msg, closur);
         }
     }
-    void settingsCbWrapper(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
+    void settingsKVWatch(kvOperation op, std::string key, std::string value)
     {
-        if (fsmPtr != nullptr)
+        if (op != kvOp_Put)
         {
-            fsmPtr->receiveSettings(nc, sub, msg, closur);
+            return;
         }
+
+        auto payload = json::parse(value);
+        spdlog::debug("Settings update: {}", payload.dump());
+        std::vector<Robot::OTGSettings> settings;
+        for (auto &&axis : payload["data"])
+        {
+            settings.push_back(axis.template get<Robot::OTGSettings>());
+        }
+
+        fsmPtr->updateDynamics(settings);
+        fsmPtr->eventLog.Debug(fmt::format("Settings update: {}", key), payload);
     }
     void Monitor(Robot::FSM *fsm)
     {
@@ -33,7 +45,6 @@ namespace NC
         // Communications
         natsConnection *nc = nullptr;
         natsSubscription *ctrlSub = nullptr;
-        natsSubscription *settingsSub = nullptr;
 
         fsmPtr = fsm;
 
@@ -49,12 +60,19 @@ namespace NC
             spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
             return;
         }
-        ncStatus = natsConnection_Subscribe(&settingsSub, nc, "motion.settings", settingsCbWrapper, NULL);
-        if (ncStatus != NATS_OK)
+
+        // Settings store
+        jsCtx *js = nullptr;
+        auto jsStatus = natsConnection_JetStream(&js, nc, NULL);
+        if (jsStatus != NATS_OK)
         {
-            spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
+            spdlog::error("Failed to get JetStream context");
             return;
         }
+
+        auto settingsKV = KV(js, "setting");
+
+        std::thread settingsKVThread(&KV::watch, settingsKV, "dynamics.active", settingsKVWatch);
 
         // Timing
         struct timespec tick;
@@ -86,10 +104,10 @@ namespace NC
             TS::Increment(tick, period);
         }
 
+        settingsKVThread.join();
+
         natsSubscription_Unsubscribe(ctrlSub);
-        natsSubscription_Unsubscribe(settingsSub);
         natsSubscription_Destroy(ctrlSub);
-        natsSubscription_Destroy(settingsSub);
 
         natsConnection_FlushTimeout(nc, 1000);
         natsConnection_Close(nc);

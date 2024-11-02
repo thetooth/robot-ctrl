@@ -201,6 +201,8 @@ void Robot::FSM::update()
     break;
     case Jog:
         Arm.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
+        setJoggingDynamics();
+
         next = Jogging;
         break;
     case Jogging:
@@ -210,6 +212,7 @@ void Robot::FSM::update()
             eventLog.Warning("Jogging interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
             inSync = false;
             next = Halt;
+            restoreDynamics();
         }
         powerOnDuration += CYCLETIME / double(TS::NSEC_PER_SECOND);
         break;

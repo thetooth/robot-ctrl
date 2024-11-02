@@ -43,6 +43,7 @@ void Robot::to_json(json &j, const Status &p)
         {"pose", p.pose},
         {"runtimeDuration", p.runtimeDuration},
         {"powerOnDuration", p.powerOnDuration},
+        {"cpuTemperature", p.cpuTemperature},
     };
 }
 

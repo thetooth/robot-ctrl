@@ -9,7 +9,7 @@
         "-DBUILD_TESTS=OFF",
         "-DBUILD_SHARED_LIBS=OFF",
         "-DBUILD_CLOUD_CLIENT=OFF",
-        "-DROBOTCTRL_ADDR_SANITIZE=OFF"
+        "-DROBOTCTRL_ADDR_SANITIZE=ON"
     ],
     "files.associations": {
         "any": "cpp",
