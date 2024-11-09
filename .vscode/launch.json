@@ -19,7 +19,7 @@
             "program": "${command:cmake.launchTargetPath}",
             "initCommands": [
                 "platform select remote-linux",
-                "platform connect connect://192.168.0.107:2345",
+                "platform connect connect://192.168.0.120:2345",
                 "settings set target.inherit-env false",
             ],
             "preRunCommands": [

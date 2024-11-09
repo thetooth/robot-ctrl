@@ -1,0 +1,66 @@
+---
+- name: RT System Deployment
+  hosts: all
+  strategy: linear
+
+  tasks:
+    - name: Install prereqs
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - rt-tests
+        - linux-image-rt-amd64
+        - lldb
+        - tuned
+        - tuned-utils
+        - lm-sensors
+        - nats-server
+        - network-manager
+      become: true
+    - name: Creature tuned directory
+      ansible.builtin.file:
+        path: /etc/tuned/custom
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      become: true
+    - name: Copy tuned profile
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/etc/tuned/custom/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      with_items:
+        - tuned.conf
+        - realtime-variables.conf
+        - script.sh
+      become: true
+      register: tuned_profile
+    - name: Enable tuned profile
+      ansible.builtin.command:
+        cmd: "tuned-adm profile custom"
+      become: true
+      changed_when: tuned_profile.changed
+    - name: Enable tuned service
+      ansible.builtin.systemd:
+        name: tuned
+        enabled: true
+        state: started
+      become: true
+    - name: Copy nats-server config
+      ansible.builtin.copy:
+        src: nats-server.conf
+        dest: /etc/nats-server.conf
+        owner: nats
+        group: nats
+        mode: "0644"
+      become: true
+    - name: Enable nats-server service
+      ansible.builtin.systemd:
+        name: nats-server
+        enabled: true
+        state: started
+      become: true

@@ -9,7 +9,7 @@
         "-DBUILD_TESTS=OFF",
         "-DBUILD_SHARED_LIBS=OFF",
         "-DBUILD_CLOUD_CLIENT=OFF",
-        "-DROBOTCTRL_ADDR_SANITIZE=ON"
+        "-DROBOTCTRL_ADDR_SANITIZE=OFF"
     ],
     "files.associations": {
         "any": "cpp",
@@ -111,5 +111,6 @@
         "future": "cpp",
         "cfenv": "cpp",
         "typeindex": "cpp"
-    }
+    },
+    "ansible.python.interpreterPath": "/bin/python3.11"
 }
