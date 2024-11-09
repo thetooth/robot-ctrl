@@ -17,21 +17,21 @@
 #include "ruckig/ruckig.hpp"
 #include "spdlog/spdlog.h"
 
-#include "BB/blackbox.hpp"
 #include "NC/control.hpp"
 #include "Robot/Drive/delta.hpp"
 #include "Robot/Drive/sim.hpp"
 #include "Robot/fsm.hpp"
 
 #include "check.hpp"
-#include "gnuplot.hpp"
 
 using namespace std::literals::chrono_literals;
 
 // EtherCAT variables:
 char IOmap[4096];
 unsigned int usedmem;
-int J1ID, J2ID, J3ID, J4ID;
+// int J1ID, J2ID, J3ID, J4ID;
+int slaveOffset = 0;
+std::array<int, 4> slaveID;
 
 // FSM
 auto fsm = Robot::FSM();
@@ -89,28 +89,21 @@ int nic_setup(char *ifname)
         auto &&slave = ec_slave[cnt];
         if (std::strcmp(slave.name, "ASDA-B3-E CoE Drive") == 0)
         {
-            if (J1ID == 0)
-            {
-                fsm.eventLog.EtherCAT(fmt::format("Assign {} {} as J1", slave.name, cnt));
-                J1ID = cnt;
-            }
-            else if (J2ID == 0)
-            {
-                fsm.eventLog.EtherCAT(fmt::format("Assign {} {} as J2", slave.name, cnt));
-                J2ID = cnt;
-            }
+            slaveID[cnt - 1] = cnt;
+            fsm.eventLog.EtherCAT(fmt::format("Assign {} {} as J{}", slave.name, cnt, cnt));
         }
     }
 
-    if (J1ID == 0 || J2ID == 0)
+    if (slaveID.size() < 4)
     {
         spdlog::critical("One or more drives are missing");
-        return 1;
     }
 
     // Drive startup params
-    ec_slave[J1ID].PO2SOconfig = Delta::PO2SOconfig;
-    ec_slave[J2ID].PO2SOconfig = Delta::PO2SOconfig;
+    for (auto &&id : slaveID)
+    {
+        ec_slave[id].PO2SOconfig = Delta::PO2SOconfig;
+    }
 
     ec_statecheck(0, EC_STATE_PRE_OP, EC_TIMEOUTSTATE * 4);
 
@@ -118,8 +111,10 @@ int nic_setup(char *ifname)
     ec_readstate();
 
     // DC Setup
-    ec_dcsync0(J1ID, true, SYNC0, 0);
-    ec_dcsync0(J2ID, true, SYNC0, 0);
+    for (auto &&id : slaveID)
+    {
+        ec_dcsync0(id, true, SYNC0, 0);
+    }
 
     usedmem = ec_config_map(&IOmap);
     if (!(usedmem <= sizeof(IOmap)))
@@ -165,7 +160,13 @@ int main()
     Kernel::start_low_latency();
 
     // Setup EtherCAT interface:
-    if (nic_setup(const_cast<char *>("enp2s0")) == 1)
+    if (SIMULATION)
+    {
+        spdlog::warn("Running in simulation mode");
+        ec_init(const_cast<char *>("lo"));
+        ec_slave[0].state = EC_STATE_OPERATIONAL;
+    }
+    else if (nic_setup(const_cast<char *>("enp2s0")) == 1)
     {
         spdlog::critical("Setup encountered an error and cannot continue");
         return 1;
@@ -191,24 +192,30 @@ int main()
     }
 
     // Setup drive PDO objects
-    Delta::PDO J1(J1ID);
-    Delta::PDO J2(J2ID);
-    // Sim::PDO J1;
-    // Sim::PDO J2;
-    Sim::PDO J3;
-    Sim::PDO J4;
+    std::map<int, std::unique_ptr<Drive::PDO>> pdo;
+    for (int i = 0; i < 4; i++)
+    {
+        if (!SIMULATION && slaveID[i] != 0)
+        {
+            pdo[slaveID[i]] = std::make_unique<Delta::PDO>(slaveID[i]);
+        }
+        else
+        {
+            pdo[i + 1] = std::make_unique<Sim::PDO>();
+        }
+    }
 
     // Assign slave ids and setup PDO table
-    fsm.J1 = Drive::Motor{J1ID, &J1, PPU * GEAR, PPV * GEAR, -65, 245};
-    fsm.J2 = Drive::Motor{J2ID, &J2, PPU * GEAR, PPV * GEAR, -155, 155};
-    fsm.J3 = Drive::Motor{3, &J3, PPU, PPV, -3600, 3600};
-    fsm.J4 = Drive::Motor{4, &J4, PPU, PPV, -360, 360};
+    fsm.J1 = Drive::Motor{1, std::move(pdo[1]), PPU * GEAR, PPV * GEAR, -65, 245};
+    fsm.J2 = Drive::Motor{2, std::move(pdo[2]), PPU * GEAR, PPV * GEAR, -155, 155};
+    fsm.J3 = Drive::Motor{3, std::move(pdo[3]), PPU, PPU, -3600, 3600};
+    fsm.J4 = Drive::Motor{4, std::move(pdo[4]), PPU, PPU, -360, 360};
 
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2, &fsm.J3, &fsm.J4};
 
     // Setup message bus
-    auto monitor = std::thread(NC::Monitor, &fsm);
+    auto monitor = std::thread(NC::Monitor, "nats://192.168.0.120:4222", &fsm);
 
     fsm.Arm.setTorqueLimit(50);
     fsm.Arm.setTorqueThreshold(95);
@@ -232,7 +239,7 @@ int main()
         wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
         fsm.update();
-        if (fsm.shutdown && (fsm.next == Robot::Idle ||
+        if (fsm.shutdown && (fsm.next == Robot::FSM::State::Idle ||
                              (std::chrono::system_clock::now().time_since_epoch() - haltTimestamp) > HALT_TIMEOUT))
         {
             spdlog::critical("Halting");

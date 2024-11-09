@@ -18,7 +18,7 @@ namespace Drive
     {
       public:
         int slaveID;
-        PDO *pdo;
+        std::unique_ptr<PDO> pdo;
         double positionRatio, velocityRatio;
         double minPosition, maxPosition;
         double torqueThreshold;
@@ -30,8 +30,9 @@ namespace Drive
         {
             fault = true;
         }
-        Motor(int id, PDO *pdoImpl, double positionRatio, double velocityRatio, double minimum, double maximum)
-            : slaveID(id), pdo(pdoImpl), positionRatio(positionRatio), velocityRatio(velocityRatio),
+        Motor(int id, std::unique_ptr<PDO> pdoImpl, double positionRatio, double velocityRatio, double minimum,
+              double maximum)
+            : slaveID(id), pdo(std::move(pdoImpl)), positionRatio(positionRatio), velocityRatio(velocityRatio),
               minPosition(minimum), maxPosition(maximum), torqueThreshold(100), fault(false)
         {
         }

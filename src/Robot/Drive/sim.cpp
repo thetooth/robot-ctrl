@@ -13,7 +13,7 @@ int32_t Sim::PDO::getActualPosition() const
 
 int32_t Sim::PDO::getActualVelocity() const
 {
-    return target_velocity;
+    return simulated_velocity;
 }
 
 int16_t Sim::PDO::getActualTorque() const
@@ -44,11 +44,26 @@ bool Sim::PDO::getEmergencyStop() const
 void Sim::PDO::setControlWord(uint16_t value)
 {
     control_word = value;
+    stepSimulation();
+}
+
+void Sim::PDO::setTargetPosition(int32_t value)
+{
+    target_position = value;
+    stepSimulation();
+}
+
+void Sim::PDO::stepSimulation()
+{
     if (control_word == CANOpen::control::word::FAULT_RESET)
     {
         status_word = CANOpen::status::value::READY_TO_SWITCH_ON_STATE;
     }
     else if (control_word == CANOpen::control::word::SWITCH_ON_OR_DISABLE_OPERATION)
+    {
+        status_word = CANOpen::status::value::READY_TO_SWITCH_ON_STATE;
+    }
+    else if (control_word == CANOpen::control::word::ENABLE_OPERATION)
     {
         status_word = CANOpen::status::value::ON_STATE;
     }
@@ -60,9 +75,14 @@ void Sim::PDO::setControlWord(uint16_t value)
     {
         status_word = CANOpen::status::value::OFF_STATE;
     }
-}
 
-void Sim::PDO::setTargetPosition(int32_t value)
-{
-    target_position = value;
+    if (status_word & CANOpen::status::value::ON_STATE)
+    {
+        simulated_velocity = (target_position - previous_position) * 1000;
+        previous_position = target_position;
+    }
+    else
+    {
+        simulated_velocity = 0;
+    }
 }

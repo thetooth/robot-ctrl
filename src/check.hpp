@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <fstream>
 
 //! @brief Asynchronously check the state of the EtherCAT network
 //!
@@ -12,6 +13,11 @@
 //! @param expectedWKC The expected working counter value obtained after normal initialization
 void check(Robot::FSM *fsm, int *wkc, int expectedWKC)
 {
+    if (SIMULATION)
+    {
+        return;
+    }
+
     int slave;
     bool operational = false;
     uint8_t currentgroup = 0;
@@ -115,7 +121,7 @@ void check(Robot::FSM *fsm, int *wkc, int expectedWKC)
 void systemCheck(Robot::FSM *fsm)
 {
     // Attempt to open thermal zone file
-    std::filesystem::path thermalZonePath = "/sys/class/thermal/thermal_zone1/temp";
+    std::filesystem::path thermalZonePath = "/sys/class/thermal/thermal_zone0/temp";
     std::ifstream thermalZoneFile(thermalZonePath);
     if (!thermalZoneFile.is_open())
     {

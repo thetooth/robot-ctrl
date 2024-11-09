@@ -28,6 +28,9 @@ namespace Sim
         int16_t target_torque;
         uint32_t digital_outputs;
 
+        int32_t previous_position;
+        int32_t simulated_velocity;
+
         uint16_t getStatusWord() const;
         int32_t getActualPosition() const;
         int32_t getActualVelocity() const;
@@ -42,6 +45,8 @@ namespace Sim
         void setTargetVelocity([[maybe_unused]] int32_t value){};
         void setTargetTorque([[maybe_unused]] int16_t value){};
         void setDigitalOutputs([[maybe_unused]] uint32_t value){};
+
+        void stepSimulation();
     };
 } // namespace Sim
 

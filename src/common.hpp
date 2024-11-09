@@ -6,9 +6,10 @@
 #include "ethercat.h"
 #include "spdlog/spdlog.h"
 
+#define SIMULATION false
 #define GEAR (50.0)      // 50:1 Harmonic drive
-#define PPU (46603.0)    // Units per degree
-#define PPV (10.0 / 6.0) // Units per degree per second
+#define PPU (46603.0)    // Units per degree (drive units per degree)
+#define PPV (10.0 / 6.0) // Units per degree per second (0.1 rpm to deg/s)
 #define SYNC0 1e6
 #define CYCLETIME SYNC0
 
@@ -87,7 +88,7 @@ namespace Kernel
         if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
         {
             spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
-            exit(errno);
+            return;
         }
 
         // Set CPU affinity
@@ -101,7 +102,7 @@ namespace Kernel
         if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
         {
             spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
-            exit(errno);
+            return;
         }
 
         // Check if cpu_dma_latency file is already open
@@ -117,7 +118,7 @@ namespace Kernel
         if (pm_qos_fd < 0)
         {
             spdlog::critical("Failed to open PM QOS file: {}", strerror(errno));
-            exit(errno);
+            return;
         }
         write(pm_qos_fd, &target, sizeof(target));
     }
@@ -139,7 +140,7 @@ namespace Kernel
         // if (sched_setscheduler(getpid(), SCHED_FIFO, &schedularParam) == -1)
         // {
         //     spdlog::critical("Failed to set priority: {}", strerror(errno));
-        //     exit(errno);
+        //     return;
         // }
 
         // Set realtime priority
@@ -150,7 +151,7 @@ namespace Kernel
         if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
         {
             spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
-            exit(errno);
+            return;
         }
 
         // Set CPU affinity
@@ -164,7 +165,7 @@ namespace Kernel
         if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
         {
             spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
-            exit(errno);
+            return;
         }
     }
 } // namespace Kernel
