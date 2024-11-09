@@ -53,21 +53,21 @@ void Robot::FSM::update()
     switch (next)
     {
     default:
-    case Idle:
+    case State::Idle:
         if (reset)
         {
             reset = false;
-            next = Reset;
+            next = State::Reset;
         }
 
         if (estop && run)
         {
             eventLog.Info("Entering run mode");
-            next = Reset;
+            next = State::Reset;
         }
 
         break;
-    case Reset:
+    case State::Reset:
         for (auto &&drive : Arm.drives)
         {
             if (drive->fault || drive->getErrorCode() != 0)
@@ -85,10 +85,10 @@ void Robot::FSM::update()
         }
 
         Arm.faultReset();
-        next = Resetting;
+        next = State::Resetting;
 
         break;
-    case Resetting: {
+    case State::Resetting: {
         auto pendingErrorCode = false;
         for (auto &&drive : Arm.drives)
         {
@@ -104,10 +104,10 @@ void Robot::FSM::update()
 
             if (run)
             {
-                next = Start;
+                next = State::Start;
                 break;
             }
-            next = Idle;
+            next = State::Idle;
         }
         else
         {
@@ -115,76 +115,83 @@ void Robot::FSM::update()
         }
     }
     break;
-    case Halt:
+    case State::Halt:
         Arm.setModeOfOperation(CANOpen::control::mode::NO_MODE);
         Arm.setCommand(CANOpenCommand::DISABLE);
 
         inSync = false;
         jog = false;
 
-        next = Halting;
+        next = State::Halting;
         break;
-    case Halting:
+    case State::Halting:
         if (J1.compareState(CANOpenState::OFF) && J2.compareState(CANOpenState::OFF))
         {
             eventLog.Info("Stopped normally");
         }
-        next = Idle;
+        waypoints.clear();
+        next = State::Idle;
 
         break;
-    case Start:
+    case State::Start:
         Arm.setCommand(CANOpenCommand::ENABLE);
 
-        next = Starting;
+        next = State::Starting;
         break;
-    case Starting:
+    case State::Starting:
         if (J1.compareState(CANOpenState::ON) && J2.compareState(CANOpenState::ON))
         {
             if (jog)
             {
                 eventLog.Debug("Entered ON state, enter jogging");
-                next = Jog;
+                next = State::Jog;
             }
             else if (needsHoming)
             {
                 eventLog.Debug("Entered ON state, enter homing");
-                next = Home;
+                next = State::Home;
             }
             else
             {
                 eventLog.Debug("Entered ON state, enter tracking");
-                next = Track;
+                next = State::Track;
             }
         }
         if (!estop || !run)
         {
-            next = Halt;
+            next = State::Halt;
         }
         break;
-    case Home:
+    case State::Home:
         configureHoming();
 
-        next = Homing;
-    case Homing: {
+        next = State::Homing;
+    case State::Homing: {
         auto homingResult = homing();
         if (homingResult)
         {
             eventLog.Debug("Homing complete");
             needsHoming = false;
             run = false;
-            next = Halt;
+            next = State::Halt;
         }
         if (!estop || !run)
         {
-            next = Halt;
+            next = State::Halt;
         }
         break;
     }
-    case Track:
+    case State::Track:
         Arm.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
-        next = Tracking;
+        next = State::Tracking;
         break;
-    case Tracking: {
+    case State::Tracking: {
+        if (waypoints.size() > 0)
+        {
+            target = waypoints.front();
+            waypoints.pop_front();
+        }
+
         auto trackingResult = tracking();
         if (!estop || !run || trackingResult)
         {
@@ -194,24 +201,24 @@ void Robot::FSM::update()
                                  "Tracking encountered error, the robot will be stopped to prevent damage");
             }
             inSync = false;
-            next = Halt;
+            next = State::Halt;
         }
         powerOnDuration += CYCLETIME / TS::NSEC_PER_SECOND;
     }
     break;
-    case Jog:
+    case State::Jog:
         Arm.setModeOfOperation(CANOpen::control::mode::POSITION_CYCLIC);
         setJoggingDynamics();
 
-        next = Jogging;
+        next = State::Jogging;
         break;
-    case Jogging:
+    case State::Jogging:
         auto joggingResult = jogging();
         if (!estop || !run || joggingResult)
         {
             eventLog.Warning("Jogging interrupted EStop: " + std::to_string(estop) + " Run: " + std::to_string(run));
             inSync = false;
-            next = Halt;
+            next = State::Halt;
             restoreDynamics();
         }
         powerOnDuration += CYCLETIME / double(TS::NSEC_PER_SECOND);
@@ -223,31 +230,31 @@ std::string Robot::FSM::to_string() const
 {
     switch (next)
     {
-    case Idle:
+    case State::Idle:
         return "Idle";
-    case Reset:
+    case State::Reset:
         return "Reset";
-    case Resetting:
+    case State::Resetting:
         return "Resetting";
-    case Halt:
+    case State::Halt:
         return "Halt";
-    case Halting:
+    case State::Halting:
         return "Halting";
-    case Start:
+    case State::Start:
         return "Start";
-    case Starting:
+    case State::Starting:
         return "Starting";
-    case Home:
+    case State::Home:
         return "Home";
-    case Homing:
+    case State::Homing:
         return "Homing";
-    case Track:
+    case State::Track:
         return "Track";
-    case Tracking:
+    case State::Tracking:
         return "Tracking";
-    case Jog:
+    case State::Jog:
         return "Jog";
-    case Jogging:
+    case State::Jogging:
         return "Jogging";
     default:
         return "[Unknown State]";

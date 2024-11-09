@@ -11,6 +11,7 @@
 #include "../common.hpp"
 #include "Drive/group.hpp"
 #include "IK/scara.hpp"
+#include "Motion/motion.hpp"
 #include "event.hpp"
 #include "settings.hpp"
 #include "status.hpp"
@@ -20,21 +21,19 @@ namespace Robot
     using namespace ruckig;
     using json = nlohmann::json;
 
-    enum State
+    enum class Command
     {
-        Idle,
-        Reset,
-        Resetting,
-        Halt,
-        Halting,
+        Stop,
         Start,
-        Starting,
-        Home,
-        Homing,
+        Goto,
         Jog,
-        Jogging,
-        Track,
-        Tracking,
+        Waypoints,
+        Reset,
+        Home,
+        SetHome,
+        HotStart,
+        MoveLinear,
+        MoveCircular,
     };
 
     class FSM
@@ -44,11 +43,27 @@ namespace Robot
         bool jog;
         bool estop = true;
         bool reset = true;
-        bool needsHoming = true;
+        bool needsHoming = !SIMULATION;
         bool shutdown = false;
         bool inSync;
 
-        State next = Idle;
+        enum class State
+        {
+            Idle,
+            Reset,
+            Resetting,
+            Halt,
+            Halting,
+            Start,
+            Starting,
+            Home,
+            Homing,
+            Jog,
+            Jogging,
+            Track,
+            Tracking,
+        } next = State::Idle;
+
         EventLog eventLog = {};
         double runtimeDuration = 0;
         double powerOnDuration = 0;
@@ -106,7 +121,7 @@ namespace Robot
             .phiVelocity = 0,
         };
         // Waypoints
-        std::vector<IK::Pose> waypoints;
+        std::deque<IK::Pose> waypoints;
 
         Status status;
 
@@ -126,19 +141,19 @@ namespace Robot
             input.current_acceleration = {0.0, 0.0, 0.0, 0.0};
             input.target_position = {0.0, 0.0, 0.0, 0.0};
             input.target_velocity = {0.0, 0.0, 0.0, 0.0};
-            input.synchronization = Synchronization::Phase;
+            input.synchronization = Synchronization::TimeIfNecessary;
 
             eventLog.Info("FSM initialized");
         }
 
         void update();
         bool tracking();
-        void receiveCommand(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure);
-        void updateDynamics(std::vector<Robot::OTGSettings> settings);
+        void receiveCommand(json payload);
         void broadcastStatus(natsConnection *nc = nullptr);
         void configureHoming();
         bool homing();
         bool jogging();
+        void updateDynamics(Robot::Preset settings);
         void setJoggingDynamics();
         void restoreDynamics();
         std::string to_string() const;

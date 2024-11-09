@@ -12,33 +12,7 @@ namespace NC
 {
     using json = nlohmann::json;
 
-    Robot::FSM *fsmPtr = nullptr;
-    void commandCbWrapper(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closur)
-    {
-        if (fsmPtr != nullptr)
-        {
-            fsmPtr->receiveCommand(nc, sub, msg, closur);
-        }
-    }
-    void settingsKVWatch(kvOperation op, std::string key, std::string value)
-    {
-        if (op != kvOp_Put)
-        {
-            return;
-        }
-
-        auto payload = json::parse(value);
-        spdlog::debug("Settings update: {}", payload.dump());
-        std::vector<Robot::OTGSettings> settings;
-        for (auto &&axis : payload["data"])
-        {
-            settings.push_back(axis.template get<Robot::OTGSettings>());
-        }
-
-        fsmPtr->updateDynamics(settings);
-        fsmPtr->eventLog.Debug(fmt::format("Settings update: {}", key), payload);
-    }
-    void Monitor(Robot::FSM *fsm)
+    void Monitor(std::string url, Robot::FSM *fsm)
     {
         Kernel::start_high_latency();
 
@@ -46,15 +20,35 @@ namespace NC
         natsConnection *nc = nullptr;
         natsSubscription *ctrlSub = nullptr;
 
-        fsmPtr = fsm;
-
-        auto ncStatus = natsConnection_ConnectTo(&nc, NATS_DEFAULT_URL);
+        auto ncStatus = natsConnection_ConnectTo(&nc, url.c_str());
         if (ncStatus != NATS_OK)
         {
             spdlog::error("NATS connection failure: {}", natsStatus_GetText(ncStatus));
             return;
         }
-        ncStatus = natsConnection_Subscribe(&ctrlSub, nc, "motion.command", commandCbWrapper, NULL);
+        ncStatus = natsConnection_Subscribe(
+            &ctrlSub, nc, "motion.command",
+            []([[maybe_unused]] natsConnection *nc, [[maybe_unused]] natsSubscription *sub, natsMsg *msg,
+               void *closure) {
+                auto fsm = static_cast<Robot::FSM *>(closure);
+                auto payload = json::parse(natsMsg_GetData(msg));
+
+                try
+                {
+                    fsm->receiveCommand(payload);
+                }
+                catch (const json::parse_error &e)
+                {
+                    spdlog::error("commandCb parsing error: {}", e.what());
+                }
+                catch (const json::exception &e)
+                {
+                    spdlog::error("commandCb exception: {}", e.what());
+                }
+
+                natsMsg_Destroy(msg);
+            },
+            fsm);
         if (ncStatus != NATS_OK)
         {
             spdlog::error("NATS subscription failure: {}", natsStatus_GetText(ncStatus));
@@ -72,7 +66,30 @@ namespace NC
 
         auto settingsKV = KV(js, "setting");
 
-        std::thread settingsKVThread(&KV::watch, settingsKV, "dynamics.active", settingsKVWatch);
+        std::thread settingsKVThread(&KV::watch, settingsKV, "dynamics.active",
+                                     [fsm](kvOperation op, std::string key, std::string value) {
+                                         if (op != kvOp_Put)
+                                         {
+                                             return;
+                                         }
+
+                                         try
+                                         {
+                                             auto payload = json::parse(value);
+                                             auto settings = payload.get<Robot::Preset>();
+
+                                             fsm->updateDynamics(settings);
+                                             fsm->eventLog.Debug(fmt::format("Settings update: {}", key), payload);
+                                         }
+                                         catch (const json::parse_error &e)
+                                         {
+                                             spdlog::error("Settings parsing error: {}", e.what());
+                                         }
+                                         catch (const json::exception &e)
+                                         {
+                                             spdlog::error("Settings exception: {}", e.what());
+                                         }
+                                     });
 
         // Timing
         struct timespec tick;

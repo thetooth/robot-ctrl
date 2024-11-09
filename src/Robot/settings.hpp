@@ -18,17 +18,15 @@ namespace Robot
     void to_json(json &j, const OTGSettings &s);
     void from_json(const json &j, OTGSettings &s);
 
-    struct DynamicsItem
+    struct Preset
     {
+        std::string id;
         std::string name;
         std::array<OTGSettings, 4> axisConfigurations;
+        std::string synchronisationMethod;
     };
-
-    struct DynamicsStore
-    {
-        uint selected = 0;
-        std::vector<DynamicsItem> items;
-    };
+    void to_json(json &j, const Preset &p);
+    void from_json(const json &j, Preset &p);
 } // namespace Robot
 
 #endif

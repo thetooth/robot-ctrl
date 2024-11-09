@@ -31,7 +31,7 @@ bool Robot::FSM::tracking()
         eventLog.Kinematic("Joint limit exceeded during preprocessing", dump());
     }
 
-    auto [alpha, beta, theta, phi, ikResult] = IK::inverseKinematics(fx, fy, fz, fr);
+    auto [alpha, beta, theta, phi, ikResult] = IK::inverseKinematics(fx, fy, fz, fr, target.toolOffset);
     status.otg.kinematicResult = (preResult != IK::Result::Success ? preResult : ikResult);
 
     if (ikResult != IK::Result::Singularity)

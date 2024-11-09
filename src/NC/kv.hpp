@@ -60,7 +60,7 @@ namespace NC
             return kvStore_Delete(store, key.c_str());
         }
 
-        natsStatus watch(std::string wildcard, Callback cb)
+        natsStatus watch(std::string wildcard, std::function<Callback> cb)
         {
             auto ncStatus = kvStore_Watch(&watcher, store, wildcard.c_str(), NULL);
 
@@ -73,7 +73,7 @@ namespace NC
             return receive(cb);
         }
 
-        natsStatus watchAll(Callback cb)
+        natsStatus watchAll(std::function<Callback> cb)
         {
             auto ncStatus = kvStore_WatchAll(&watcher, store, NULL);
             if (ncStatus != NATS_OK)
@@ -85,7 +85,7 @@ namespace NC
             return receive(cb);
         }
 
-        natsStatus receive(Callback cb)
+        natsStatus receive(std::function<Callback> cb)
         {
             closed = false;
             natsStatus ncStatus = NATS_OK;

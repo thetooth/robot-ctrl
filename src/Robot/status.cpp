@@ -74,8 +74,8 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         eventLog.pop_front();
     }
 
-    auto [dx, dy, dz, dr] =
-        IK::forwardKinematics(J1.getPosition(), J2.getPosition(), input.current_position[2], input.current_position[3]);
+    auto [dx, dy, dz, dr] = IK::forwardKinematics(J1.getPosition(), J2.getPosition(), J3.getPosition(),
+                                                  J4.getPosition(), target.toolOffset);
 
     status.run = run;
     status.estop = estop;
@@ -94,8 +94,8 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
         .phi = J4.getPosition(),
         .alphaVelocity = J1.getVelocity(),
         .betaVelocity = J2.getVelocity(),
-        .thetaVelocity = input.current_velocity[2],
-        .phiVelocity = input.current_velocity[3],
+        .thetaVelocity = J3.getVelocity(),
+        .phiVelocity = J4.getVelocity(),
     };
     status.runtimeDuration = runtimeDuration;
     status.powerOnDuration = powerOnDuration;
@@ -115,7 +115,6 @@ void Robot::FSM::broadcastStatus(natsConnection *nc)
             .followingError = drive->getFollowingError(),
         });
     }
-    // status.drives = {J1, J2, J3, J4};
 
     json j = status;
     auto payload = j.dump();
