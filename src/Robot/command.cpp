@@ -80,14 +80,29 @@ void Robot::FSM::receiveCommand(json payload)
     case Command::Waypoints:
         if (estop)
         {
-            if (payload["waypoints"].is_array())
+            std::vector<IK::Pose> wpt = {
+                {.x = -250, .y = 250, .z = 0, .r = 0},  {.x = 0, .y = 250, .z = 100, .r = 0},
+                {.x = 200, .y = 250, .z = 100, .r = 0}, {.x = 0, .y = 250, .z = 100, .r = 0},
+                {.x = -250, .y = 250, .z = 0, .r = 0},
+
+            };
+            for (auto &waypoint : wpt)
             {
-                waypoints.clear();
-                for (auto &&waypoint : payload["waypoints"])
-                {
-                    waypoints.push_back(waypoint.template get<IK::Pose>());
-                }
+                auto [a, b, t, p, _] =
+                    IK::inverseKinematics(waypoint.x, waypoint.y, waypoint.z, waypoint.r, waypoint.toolOffset);
+
+                waypoint.alpha = a;
+                waypoint.beta = b;
+                waypoint.theta = t;
+                waypoint.phi = p;
             }
+            auto [path, result] = Motion::calculateIntermediatePath(input, wpt);
+            if (result != ruckig::Result::Finished)
+            {
+                KinematicAlarm = true;
+                return;
+            }
+            waypoints.insert(waypoints.end(), path.begin(), path.end());
         }
         break;
     case Command::Reset:

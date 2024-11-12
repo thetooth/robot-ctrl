@@ -32,6 +32,7 @@ namespace IK
     };
     void to_json(json &j, const Pose &p);
     void from_json(const json &j, Pose &p);
+    std::array<double, 4> jointVector(const Pose &p);
 
     enum class Result
     {

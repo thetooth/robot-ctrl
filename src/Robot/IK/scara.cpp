@@ -189,3 +189,8 @@ std::string IK::resultToString(IK::Result result)
         return "Unknown";
     }
 }
+
+std::array<double, 4> IK::jointVector(const Pose &p)
+{
+    return {p.alpha, p.beta, p.theta, p.phi};
+}
