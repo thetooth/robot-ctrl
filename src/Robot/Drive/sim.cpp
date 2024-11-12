@@ -78,7 +78,12 @@ void Sim::PDO::stepSimulation()
 
     if (status_word & CANOpen::status::value::ON_STATE)
     {
-        simulated_velocity = (target_position - previous_position) * 1000;
+        auto unitsPerSecond = target_position - previous_position;
+        if (std::abs(unitsPerSecond) < 1)
+        {
+            return;
+        }
+        simulated_velocity = unitsPerSecond / 46603.0 * 600;
         previous_position = target_position;
     }
     else
