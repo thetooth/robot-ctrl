@@ -156,9 +156,6 @@ int main()
     signal(SIGKILL, abort_handler);
     signal(SIGSTOP, abort_handler);
 
-    // Set thread policy and CPU affinity, this also locks the processor in high power state
-    Kernel::start_low_latency();
-
     // Setup EtherCAT interface:
     if (SIMULATION)
     {
@@ -208,8 +205,8 @@ int main()
     // Assign slave ids and setup PDO table
     fsm.J1 = Drive::Motor{1, std::move(pdo[1]), PPU * GEAR, PPV * GEAR, -65, 245};
     fsm.J2 = Drive::Motor{2, std::move(pdo[2]), PPU * GEAR, PPV * GEAR, -155, 155};
-    fsm.J3 = Drive::Motor{3, std::move(pdo[3]), PPU, PPU, -3600, 3600};
-    fsm.J4 = Drive::Motor{4, std::move(pdo[4]), PPU, PPU, -360, 360};
+    fsm.J3 = Drive::Motor{3, std::move(pdo[3]), PPU, PPV, -3600, 3600};
+    fsm.J4 = Drive::Motor{4, std::move(pdo[4]), PPU, PPV, -360, 360};
 
     // Assign drive groups
     fsm.Arm = Drive::Group{&fsm.J1, &fsm.J2, &fsm.J3, &fsm.J4};
@@ -224,6 +221,9 @@ int main()
     fsm.J2.setHomingOffset(145);
     fsm.J3.setHomingOffset(0);
     fsm.J4.setHomingOffset(0);
+
+    // Set thread policy and CPU affinity, this also locks the processor in high power state
+    Kernel::start_low_latency();
 
     // Timing
     struct timespec tick;

@@ -3,6 +3,7 @@
 Basic EtherCAT control test of 4 axis SCARA robot based on SOEM and ruckig...
 
 A web based visualization tool is available [here](https://github.com/thetooth/robot-gui)
+Inverse kinematics are based on [this](https://www.cs.columbia.edu/~allen/F15/NOTES/invkin.pdf) paper. You can find the implementation in `src/Robot/IK/scara.cpp` and interactive desmos demo [here](https://www.desmos.com/calculator/h8drgyqyyc).
 
 You need a linux platform prepared for realtime:
 

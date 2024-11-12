@@ -84,7 +84,7 @@ namespace Kernel
         struct sched_param schedularParam;
         memset(&schedularParam, 0, sizeof(schedularParam));
         // Do not set priority above 49, otherwise sockets are starved
-        schedularParam.sched_priority = 40;
+        schedularParam.sched_priority = 39;
         if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
         {
             spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
@@ -99,7 +99,7 @@ namespace Kernel
         // from main memory, or enters a low power state.
         CPU_SET(2, &cpuSet);
         CPU_SET(3, &cpuSet);
-        if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
+        if (sched_setaffinity(gettid(), sizeof(cpuSet), &cpuSet) == -1)
         {
             spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
             return;
@@ -133,24 +133,13 @@ namespace Kernel
 
     [[maybe_unused]] static void start_high_latency(void)
     {
-        // // Set low priority
-        // struct sched_param schedularParam;
-        // memset(&schedularParam, 0, sizeof(schedularParam));
-        // schedularParam.sched_priority = 10;
-        // if (sched_setscheduler(getpid(), SCHED_FIFO, &schedularParam) == -1)
-        // {
-        //     spdlog::critical("Failed to set priority: {}", strerror(errno));
-        //     return;
-        // }
-
-        // Set realtime priority
+        // Set low priority
         struct sched_param schedularParam;
         memset(&schedularParam, 0, sizeof(schedularParam));
-        // Do not set priority above 49, otherwise sockets are starved
-        schedularParam.sched_priority = 10;
-        if (sched_setscheduler(0, SCHED_FIFO, &schedularParam) == -1)
+        schedularParam.sched_priority = 19;
+        if (sched_setscheduler(gettid(), SCHED_FIFO, &schedularParam) == -1)
         {
-            spdlog::critical("Failed to set realtime priority: {}", strerror(errno));
+            spdlog::critical("Failed to set priority: {}", strerror(errno));
             return;
         }
 
@@ -160,9 +149,9 @@ namespace Kernel
         // Use both isolated cores of Intel Atom x7425E as they share a single L2 cache,
         // the cache miss leads to large clock skew when the other core performs a load
         // from main memory, or enters a low power state.
-        CPU_SET(2, &cpuSet);
-        CPU_SET(3, &cpuSet);
-        if (sched_setaffinity(getpid(), sizeof(cpuSet), &cpuSet) == -1)
+        CPU_SET(0, &cpuSet);
+        CPU_SET(1, &cpuSet);
+        if (sched_setaffinity(gettid(), sizeof(cpuSet), &cpuSet) == -1)
         {
             spdlog::critical("Failed to set CPU affinity: {}", strerror(errno));
             return;
